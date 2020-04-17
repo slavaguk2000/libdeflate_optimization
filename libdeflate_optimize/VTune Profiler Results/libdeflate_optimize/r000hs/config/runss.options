@@ -1,0 +1,16 @@
+-r
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\VTune Profiler Results\libdeflate_optimize\r000hs
+--stack-stitching
+--data-limit-mb=1000
+--disk-space-limit=0
+--mrte-type=java,dotnet,python
+--gpu-profiling-type=none
+--itt-config=frame
+--itt-config=task,event,counter
+--stackwalk=offline
+--mrte-mode=auto
+--type=cpu:counters:nostack
+--type=cpu:stack
+--interval=10
+--
+C:\Users\user\source\repos\libdeflate_optimize\Debug\libdeflate_optimize.exe
