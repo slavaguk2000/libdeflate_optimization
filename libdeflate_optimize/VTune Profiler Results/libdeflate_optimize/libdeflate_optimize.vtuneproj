@@ -233,6 +233,11 @@
      <recursive type="bool">false</recursive>
      <priority type="bool">true</priority>
     </searchDirectory>
+    <searchDirectory>
+     <name>C:\</name>
+     <recursive type="bool">false</recursive>
+     <priority type="bool">true</priority>
+    </searchDirectory>
    </searchCategory>
    <searchCategory>
     <category type="u8_t">4</category>

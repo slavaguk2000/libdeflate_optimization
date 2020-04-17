@@ -21,13 +21,11 @@
     <ClCompile Include="libdeflate2\lib\deflate_decompress.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="main.c">
+    <ClCompile Include="main.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="libdeflate2\libdeflate.h">
+    <ClCompile Include="libdeflate2\lib\deflate_compress.c">
       <Filter>Исходные файлы</Filter>
-    </ClInclude>
+    </ClCompile>
   </ItemGroup>
 </Project>
