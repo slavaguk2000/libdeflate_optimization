@@ -38,7 +38,7 @@ typedef s16 mf_pos_t;
  *
  * 'data' must be aligned to a MATCHFINDER_ALIGNMENT boundary.
  */
-static forceinline void
+/*static*//*fifth*/ forceinline void
 matchfinder_init(mf_pos_t *data, size_t num_entries)
 {
 	size_t i;
@@ -71,7 +71,7 @@ matchfinder_init(mf_pos_t *data, size_t num_entries)
  * of "hash chains", and 2-ary in the case of "binary trees".  In either case,
  * the links need to be rebased in the same way.
  */
-static forceinline void
+/*static*//*fifth*/ forceinline void
 matchfinder_rebase(mf_pos_t *data, size_t num_entries)
 {
 	size_t i;
@@ -109,7 +109,7 @@ matchfinder_rebase(mf_pos_t *data, size_t num_entries)
  * next-highest @num_bits bits of the product as the hash value, as those have
  * the most randomness.
  */
-static forceinline u32
+/*static*//*fifth*/ forceinline u32
 lz_hash(u32 seq, unsigned num_bits)
 {
 	return (u32)(seq * 0x1E35A7BD) >> (32 - num_bits);
@@ -119,7 +119,7 @@ lz_hash(u32 seq, unsigned num_bits)
  * Return the number of bytes at @matchptr that match the bytes at @strptr, up
  * to a maximum of @max_len.  Initially, @start_len bytes are matched.
  */
-static forceinline unsigned
+/*static*//*fifth*/ forceinline unsigned
 lz_extend(const u8 * const strptr, const u8 * const matchptr,
 	  const unsigned start_len, const unsigned max_len)
 {

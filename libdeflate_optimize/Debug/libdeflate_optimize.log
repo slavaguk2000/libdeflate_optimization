@@ -1,11 +1,17 @@
-﻿  deflate_compress.c
+﻿  aligned_malloc.c
+  deflate_compress.c
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\unaligned.h(84,31): warning C4244: return: преобразование "u64" в "machine_word_t", возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h(212,44): warning C4244: =: преобразование "unsigned long" в "mf_pos_t", возможна потеря данных
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h(375,6): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h(394,6): warning C4018: >: несоответствие типов со знаком и без знака
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(536,15): warning C4018: <=: несоответствие типов со знаком и без знака
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(541,26): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(569,27): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(1668,19): warning C4018: >=: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2000,8): warning C4018: >: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2347,54): warning C4267: функция: преобразование из "size_t" в "u16"; возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(1999,8): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2345,54): warning C4267: функция: преобразование из "size_t" в "u16"; возможна потеря данных
+  deflate_decompress.c
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\unaligned.h(84,31): warning C4244: return: преобразование "u64" в "machine_word_t", возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\decompress_template.h(297,7): warning C4018: >=: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\decompress_template.h(331,3): warning C4018: <=: несоответствие типов со знаком и без знака
+  Создание кода...
   libdeflate_optimize.vcxproj -> C:\Users\user\source\repos\libdeflate_optimize\Debug\libdeflate_optimize.exe

@@ -135,13 +135,13 @@ struct hc_matchfinder {
 ;
 
 /* Prepare the matchfinder for a new input buffer.  */
-static forceinline void
+/*static*/ forceinline void //second
 hc_matchfinder_init(struct hc_matchfinder *mf)
 {
 	matchfinder_init((mf_pos_t *)mf, HC_MATCHFINDER_TOTAL_HASH_LENGTH);
 }
 
-static forceinline void
+/*static*//*third*/ forceinline void
 hc_matchfinder_slide_window(struct hc_matchfinder *mf)
 {
 	matchfinder_rebase((mf_pos_t *)mf,
@@ -179,7 +179,7 @@ hc_matchfinder_slide_window(struct hc_matchfinder *mf)
  * Return the length of the match found, or 'best_len' if no match longer than
  * 'best_len' was found.
  */
-static forceinline u32
+/*static*//*third*/ forceinline u32
 hc_matchfinder_longest_match(struct hc_matchfinder * const restrict mf,
 			     const u8 ** const restrict in_base_p,
 			     const u8 * const restrict in_next,
@@ -335,7 +335,7 @@ hc_matchfinder_longest_match(struct hc_matchfinder * const restrict mf,
 out:
 	*offset_ret = in_next - best_matchptr;
 	return best_len;
-}
+}//second long
 
 /*
  * Advance the matchfinder, but don't search for matches.
@@ -359,7 +359,26 @@ out:
  *
  * Returns @in_next + @count.
  */
-static forceinline const u8 *
+/*
+* Продвигайте поиск совпадений, но не ищите совпадения.
+*
+* @mf
+* Структура Matchfinder.
+* @in_base_p
+* Расположение указателя, указывающего на место во входных данных, в котором в данный момент механизм поиска совпадает с позициями.Это может быть обновлено этой функцией.
+* @cur_pos
+* Текущая позиция во входном буфере относительно @in_base.
+* @end_pos
+* Конечная позиция входного буфера относительно @in_base.
+* @next_hashes
+* Предварительно вычисленные хэш - коды для последовательности, начинающейся с @in_next.
+* Они будут использованы, а затем дополнены предварительно вычисленными хэш - кодами для последовательности, начинающейся с @in_next + @count.
+* @count
+* Количество байтов для продвижения.Должно быть > 0.
+*
+*Возвращает @in_next + @count.
+*/
+/*static*//*third*/ forceinline const u8 *
 hc_matchfinder_skip_positions(struct hc_matchfinder * const restrict mf,
 			      const u8 ** const restrict in_base_p,
 			      const u8 *in_next,
@@ -398,6 +417,5 @@ hc_matchfinder_skip_positions(struct hc_matchfinder * const restrict mf,
 	prefetchw(&mf->hash4_tab[hash4]);
 	next_hashes[0] = hash3;
 	next_hashes[1] = hash4;
-
 	return in_next;
-}
+}//the most long function

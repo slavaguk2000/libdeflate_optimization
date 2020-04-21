@@ -24,7 +24,7 @@ DEFINE_UNALIGNED_TYPE(machine_word_t)
 
 /***** Unaligned loads  *****/
 
-static forceinline u16
+/*static*//*forth*/ forceinline u16
 get_unaligned_le16(const u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST)
@@ -33,7 +33,7 @@ get_unaligned_le16(const u8 *p)
 		return ((u16)p[1] << 8) | p[0];
 }
 
-static forceinline u16
+/*static*//*forth*/ forceinline u16
 get_unaligned_be16(const u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST)
@@ -42,7 +42,7 @@ get_unaligned_be16(const u8 *p)
 		return ((u16)p[0] << 8) | p[1];
 }
 
-static forceinline u32
+/*static*//*forth*/ forceinline u32
 get_unaligned_le32(const u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST)
@@ -52,7 +52,7 @@ get_unaligned_le32(const u8 *p)
 			((u32)p[1] << 8) | p[0];
 }
 
-static forceinline u32
+/*static*//*forth*/ forceinline u32
 get_unaligned_be32(const u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST)
@@ -62,7 +62,7 @@ get_unaligned_be32(const u8 *p)
 			((u32)p[2] << 8) | p[3];
 }
 
-static forceinline u64
+/*static*//*forth*/ forceinline u64
 get_unaligned_le64(const u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST)
@@ -74,7 +74,7 @@ get_unaligned_le64(const u8 *p)
 			((u64)p[1] << 8) | p[0];
 }
 
-static forceinline machine_word_t
+/*static*//*forth*/ forceinline machine_word_t
 get_unaligned_leword(const u8 *p)
 {
 	STATIC_ASSERT(WORDBITS == 32 || WORDBITS == 64);
@@ -86,7 +86,7 @@ get_unaligned_leword(const u8 *p)
 
 /***** Unaligned stores  *****/
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_le16(u16 v, u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
@@ -97,7 +97,7 @@ put_unaligned_le16(u16 v, u8 *p)
 	}
 }
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_be16(u16 v, u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
@@ -108,7 +108,7 @@ put_unaligned_be16(u16 v, u8 *p)
 	}
 }
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_le32(u32 v, u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
@@ -121,7 +121,7 @@ put_unaligned_le32(u32 v, u8 *p)
 	}
 }
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_be32(u32 v, u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
@@ -134,7 +134,7 @@ put_unaligned_be32(u32 v, u8 *p)
 	}
 }
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_le64(u64 v, u8 *p)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
@@ -151,7 +151,7 @@ put_unaligned_le64(u64 v, u8 *p)
 	}
 }
 
-static forceinline void
+/*static*//*forth*/ forceinline void
 put_unaligned_leword(machine_word_t v, u8 *p)
 {
 	STATIC_ASSERT(WORDBITS == 32 || WORDBITS == 64);
@@ -169,7 +169,7 @@ put_unaligned_leword(machine_word_t v, u8 *p)
  * bits contain the first 3 bytes, arranged in octets in a platform-dependent
  * order, at the memory location from which the input 32-bit value was loaded.
  */
-static forceinline u32
+/*static*//*forth*/ forceinline u32
 loaded_u32_to_u24(u32 v)
 {
 	if (CPU_IS_LITTLE_ENDIAN())
@@ -184,7 +184,7 @@ loaded_u32_to_u24(u32 v)
  * in the 24 bits is platform-dependent.  At least LOAD_U24_REQUIRED_NBYTES
  * bytes must be available at @p; note that this may be more than 3.
  */
-static forceinline u32
+/*static*//*forth*/ forceinline u32
 load_u24_unaligned(const u8 *p)
 {
 #if UNALIGNED_ACCESS_IS_FAST

@@ -136,6 +136,11 @@
      <recursive type="bool">true</recursive>
      <priority type="bool">true</priority>
     </searchDirectory>
+    <searchDirectory>
+     <name>C:\Users\user\source\repos\libdeflate_optimize\Release</name>
+     <recursive type="bool">true</recursive>
+     <priority type="bool">true</priority>
+    </searchDirectory>
    </searchCategory>
    <searchCategory>
     <category type="u8_t">2</category>
@@ -146,6 +151,11 @@
     </searchDirectory>
     <searchDirectory>
      <name>C:\Users\user\source\repos\libdeflate_optimize</name>
+     <recursive type="bool">true</recursive>
+     <priority type="bool">true</priority>
+    </searchDirectory>
+    <searchDirectory>
+     <name>C:\Users\user\source\repos\libdeflate_optimize\Release</name>
      <recursive type="bool">true</recursive>
      <priority type="bool">true</priority>
     </searchDirectory>
@@ -253,7 +263,7 @@
      <launch type="pointer" type_id="dasID_cctrl2::ApplicationWorkload" ptr_type="dasID_cctrl2::IWorkload">
       <workload>
        <targetName>launch</targetName>
-       <launch_app.app_to_launch>C:\Users\user\source\repos\libdeflate_optimize\Debug\libdeflate_optimize.exe</launch_app.app_to_launch>
+       <launch_app.app_to_launch>C:\Users\user\source\repos\libdeflate_optimize\Release\libdeflate_optimize.exe</launch_app.app_to_launch>
        <launch_app.working_folder>C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\</launch_app.working_folder>
        <launch_app.app_parameters></launch_app.app_parameters>
        <use_app_dir_as_work_dir type="bool">false</use_app_dir_as_work_dir>
@@ -384,6 +394,35 @@
        <contextValue>
         <id>slowGoodFrameThreshold</id>
         <value type="double">40</value>
+       </contextValue>
+       <contextValue>
+        <id>stackSizeCollect</id>
+        <value>0</value>
+       </contextValue>
+      </knob_values>
+     </at_start_point>
+     <at_start_point>
+      <at_path>C:\Program Files (x86)\IntelSWTools\VTune Profiler 2020\config\analysis_type\threading_analysis.cfg</at_path>
+      <knob_values>
+       <contextValue>
+        <id>enableStackCollect</id>
+        <value type="bool">true</value>
+       </contextValue>
+       <contextValue>
+        <id>groupForCustomControl</id>
+        <value type="null"></value>
+       </contextValue>
+       <contextValue>
+        <id>initialViewpoint</id>
+        <value>%ThreadingEfficiencyViewpointName</value>
+       </contextValue>
+       <contextValue>
+        <id>samplingAndWaits</id>
+        <value>sw</value>
+       </contextValue>
+       <contextValue>
+        <id>samplingInterval</id>
+        <value type="double">1</value>
        </contextValue>
        <contextValue>
         <id>stackSizeCollect</id>

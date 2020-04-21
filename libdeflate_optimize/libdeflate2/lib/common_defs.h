@@ -182,7 +182,7 @@ typedef size_t machine_word_t;
  * fallback is used.
  */
 #ifndef CPU_IS_LITTLE_ENDIAN
-static forceinline int CPU_IS_LITTLE_ENDIAN(void)
+/*static*//*sixth*/  forceinline int CPU_IS_LITTLE_ENDIAN(void)
 {
 	union {
 		unsigned int v;
@@ -195,7 +195,7 @@ static forceinline int CPU_IS_LITTLE_ENDIAN(void)
 
 /* bswap16(n) - swap the bytes of a 16-bit integer */
 #ifndef bswap16
-static forceinline u16 bswap16(u16 n)
+/*static*//*sixth*/ forceinline u16 bswap16(u16 n)
 {
 	return (n << 8) | (n >> 8);
 }
@@ -203,7 +203,7 @@ static forceinline u16 bswap16(u16 n)
 
 /* bswap32(n) - swap the bytes of a 32-bit integer */
 #ifndef bswap32
-static forceinline u32 bswap32(u32 n)
+/*static*//*sixth*/ forceinline u32 bswap32(u32 n)
 {
 	return ((n & 0x000000FF) << 24) |
 	       ((n & 0x0000FF00) << 8) |
@@ -214,7 +214,7 @@ static forceinline u32 bswap32(u32 n)
 
 /* bswap64(n) - swap the bytes of a 64-bit integer */
 #ifndef bswap64
-static forceinline u64 bswap64(u64 n)
+/*static*//*sixth*/ forceinline u64 bswap64(u64 n)
 {
 	return ((n & 0x00000000000000FF) << 56) |
 	       ((n & 0x000000000000FF00) << 40) |
@@ -263,7 +263,7 @@ static forceinline u64 bswap64(u64 n)
 
 #define DEFINE_UNALIGNED_TYPE(type)				\
 								\
-static forceinline type						\
+/*static*//*sixth*/  forceinline type						\
 load_##type##_unaligned(const void *p)				\
 {								\
 	type v;							\
@@ -271,7 +271,7 @@ load_##type##_unaligned(const void *p)				\
 	return v;						\
 }								\
 								\
-static forceinline void						\
+/*static*//*sixth*/  forceinline void						\
 store_##type##_unaligned(type v, void *p)			\
 {								\
 	memcpy(p, &v, sizeof(v));				\
@@ -290,7 +290,7 @@ store_##type##_unaligned(type v, void *p)			\
  */
 
 #ifndef bsr32
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsr32(u32 n)
 {
 	unsigned i = 0;
@@ -301,7 +301,7 @@ bsr32(u32 n)
 #endif
 
 #ifndef bsr64
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsr64(u64 n)
 {
 	unsigned i = 0;
@@ -311,7 +311,7 @@ bsr64(u64 n)
 }
 #endif
 
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsrw(machine_word_t n)
 {
 	STATIC_ASSERT(WORDBITS == 32 || WORDBITS == 64);
@@ -328,7 +328,7 @@ bsrw(machine_word_t n)
  */
 
 #ifndef bsf32
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsf32(u32 n)
 {
 	unsigned i = 0;
@@ -341,7 +341,7 @@ bsf32(u32 n)
 #endif
 
 #ifndef bsf64
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsf64(u64 n)
 {
 	unsigned i = 0;
@@ -353,7 +353,7 @@ bsf64(u64 n)
 }
 #endif
 
-static forceinline unsigned
+/*static*//*sixth*/  forceinline unsigned
 bsfw(machine_word_t n)
 {
 	STATIC_ASSERT(WORDBITS == 32 || WORDBITS == 64);

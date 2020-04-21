@@ -380,6 +380,15 @@ _offset_decode_results DD 0100H
 	DD	0e800100H
 	DD	0ec00100H
 CONST	ENDS
+PUBLIC	_load_u16_unaligned
+PUBLIC	_load_u32_unaligned
+PUBLIC	_load_u64_unaligned
+PUBLIC	_load_machine_word_t_unaligned
+PUBLIC	_store_machine_word_t_unaligned
+PUBLIC	_get_unaligned_le16
+PUBLIC	_get_unaligned_le32
+PUBLIC	_get_unaligned_le64
+PUBLIC	_get_unaligned_leword
 PUBLIC	_libdeflate_alloc_decompressor@0
 PUBLIC	_libdeflate_deflate_decompress@24
 PUBLIC	_libdeflate_deflate_decompress_ex@28
