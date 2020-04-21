@@ -2,10 +2,18 @@
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\unaligned.h(84,31): warning C4244: return: преобразование "u64" в "machine_word_t", возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h(212,44): warning C4244: =: преобразование "unsigned long" в "mf_pos_t", возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h(375,6): warning C4018: >: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(536,15): warning C4018: <=: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(541,26): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(569,27): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(532,15): warning C4018: <=: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(538,26): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(551,32): error C4146: применение унарного минуса к типу без знака; результат оставлен без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(566,27): warning C4267: =: преобразование из "size_t" в "u8"; возможна потеря данных
 C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(1668,19): warning C4018: >=: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2000,8): warning C4018: >: несоответствие типов со знаком и без знака
-C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2347,54): warning C4267: функция: преобразование из "size_t" в "u16"; возможна потеря данных
-  libdeflate_optimize.vcxproj -> C:\Users\user\source\repos\libdeflate_optimize\Debug\libdeflate_optimize.exe
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(1765,44): error C4146: применение унарного минуса к типу без знака; результат оставлен без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2003,8): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2536,8): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2609,10): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2692,31): warning C4013: libdeflate_aligned_malloc: нет определения; предполагается "extern" с возвратом типа "int"
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2692,60): warning C4047: =: "libdeflate_compressor *" отличается по уровням косвенного обращения от "int"
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2776,26): warning C4013: libdeflate_aligned_free: нет определения; предполагается "extern" с возвратом типа "int"
+C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\deflate_compress.c(2802,54): warning C4267: функция: преобразование из "size_t" в "u16"; возможна потеря данных
+  main.c
+  Создание кода...

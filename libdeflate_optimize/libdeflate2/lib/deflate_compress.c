@@ -27,37 +27,33 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "aligned_malloc.h"
 #include "deflate_compress.h"
 #include "deflate_constants.h"
 #include "unaligned.h"
 
 #include "libdeflate.h"
 
-/*
- * By default, the near-optimal parsing algorithm is enabled at compression
- * level 8 and above.  The near-optimal parsing algorithm produces a compression
- * ratio significantly better than the greedy and lazy algorithms implemented
- * here, and also the algorithm used by zlib at level 9.  However, it is slow.
- */
-#define SUPPORT_NEAR_OPTIMAL_PARSING 0
+ /*
+  * By default, the near-optimal parsing algorithm is enabled at compression
+  * level 8 and above.  The near-optimal parsing algorithm produces a compression
+  * ratio significantly better than the greedy and lazy algorithms implemented
+  * here, and also the algorithm used by zlib at level 9.  However, it is slow.
+  */
+#define SUPPORT_NEAR_OPTIMAL_PARSING 1
 
-/*
- * Define to 1 to maintain the full map from match offsets to offset slots.
- * This slightly speeds up translations of match offsets to offset slots, but it
- * uses 32769 bytes of memory rather than the 512 bytes used by the condensed
- * map.  The speedup provided by the larger map is most helpful when the
- * near-optimal parsing algorithm is being used.
- */
+  /*
+   * Define to 1 to maintain the full map from match offsets to offset slots.
+   * This slightly speeds up translations of match offsets to offset slots, but it
+   * uses 32769 bytes of memory rather than the 512 bytes used by the condensed
+   * map.  The speedup provided by the larger map is most helpful when the
+   * near-optimal parsing algorithm is being used.
+   */
 #define USE_FULL_OFFSET_SLOT_FAST	SUPPORT_NEAR_OPTIMAL_PARSING
 
-/*
- * DEFLATE uses a 32768 byte sliding window; set the matchfinder parameters
- * appropriately.
- */
+   /*
+	* DEFLATE uses a 32768 byte sliding window; set the matchfinder parameters
+	* appropriately.
+	*/
 #define MATCHFINDER_WINDOW_ORDER	15
 
 #include "hc_matchfinder.h"
@@ -65,61 +61,61 @@
 #  include "bt_matchfinder.h"
 #endif
 
-/*
- * The compressor always chooses a block of at least MIN_BLOCK_LENGTH bytes,
- * except if the last block has to be shorter.
- */
+	/*
+	 * The compressor always chooses a block of at least MIN_BLOCK_LENGTH bytes,
+	 * except if the last block has to be shorter.
+	 */
 #define MIN_BLOCK_LENGTH	10000
 
-/*
- * The compressor attempts to end blocks after SOFT_MAX_BLOCK_LENGTH bytes, but
- * the final length might be slightly longer due to matches extending beyond
- * this limit.
- */
+	 /*
+	  * The compressor attempts to end blocks after SOFT_MAX_BLOCK_LENGTH bytes, but
+	  * the final length might be slightly longer due to matches extending beyond
+	  * this limit.
+	  */
 #define SOFT_MAX_BLOCK_LENGTH	300000
 
-/*
- * The number of observed matches or literals that represents sufficient data to
- * decide whether the current block should be terminated or not.
- */
+	  /*
+	   * The number of observed matches or literals that represents sufficient data to
+	   * decide whether the current block should be terminated or not.
+	   */
 #define NUM_OBSERVATIONS_PER_BLOCK_CHECK       512
 
 
 #if SUPPORT_NEAR_OPTIMAL_PARSING
-/* Constants specific to the near-optimal parsing algorithm */
+	   /* Constants specific to the near-optimal parsing algorithm */
 
-/*
- * The maximum number of matches the matchfinder can find at a single position.
- * Since the matchfinder never finds more than one match for the same length,
- * presuming one of each possible length is sufficient for an upper bound.
- * (This says nothing about whether it is worthwhile to consider so many
- * matches; this is just defining the worst case.)
- */
+	   /*
+		* The maximum number of matches the matchfinder can find at a single position.
+		* Since the matchfinder never finds more than one match for the same length,
+		* presuming one of each possible length is sufficient for an upper bound.
+		* (This says nothing about whether it is worthwhile to consider so many
+		* matches; this is just defining the worst case.)
+		*/
 #  define MAX_MATCHES_PER_POS	(DEFLATE_MAX_MATCH_LEN - DEFLATE_MIN_MATCH_LEN + 1)
 
-/*
- * The number of lz_match structures in the match cache, excluding the extra
- * "overflow" entries.  This value should be high enough so that nearly the
- * time, all matches found in a given block can fit in the match cache.
- * However, fallback behavior (immediately terminating the block) on cache
- * overflow is still required.
- */
+		/*
+		 * The number of lz_match structures in the match cache, excluding the extra
+		 * "overflow" entries.  This value should be high enough so that nearly the
+		 * time, all matches found in a given block can fit in the match cache.
+		 * However, fallback behavior (immediately terminating the block) on cache
+		 * overflow is still required.
+		 */
 #  define CACHE_LENGTH      (SOFT_MAX_BLOCK_LENGTH * 5)
 
 #endif /* SUPPORT_NEAR_OPTIMAL_PARSING */
 
-/*
- * These are the compressor-side limits on the codeword lengths for each Huffman
- * code.  To make outputting bits slightly faster, some of these limits are
- * lower than the limits defined by the DEFLATE format.  This does not
- * significantly affect the compression ratio, at least for the block lengths we
- * use.
- */
+		 /*
+		  * These are the compressor-side limits on the codeword lengths for each Huffman
+		  * code.  To make outputting bits slightly faster, some of these limits are
+		  * lower than the limits defined by the DEFLATE format.  This does not
+		  * significantly affect the compression ratio, at least for the block lengths we
+		  * use.
+		  */
 #define MAX_LITLEN_CODEWORD_LEN		14
 #define MAX_OFFSET_CODEWORD_LEN		DEFLATE_MAX_OFFSET_CODEWORD_LEN
 #define MAX_PRE_CODEWORD_LEN		DEFLATE_MAX_PRE_CODEWORD_LEN
 
-/* Table: length slot => length slot base value  */
+		  /* Table: length slot => length slot base value  */
 static const unsigned deflate_length_slot_base[] = {
 	3   , 4   , 5   , 6   , 7   , 8   , 9   , 10  ,
 	11  , 13  , 15  , 17  , 19  , 23  , 27  , 31  ,
@@ -225,25 +221,25 @@ struct deflate_costs {
  */
 #define COST_SHIFT	3
 
-/*
- * The NOSTAT_BITS value for a given alphabet is the number of bits assumed to
- * be needed to output a symbol that was unused in the previous optimization
- * pass.  Assigning a default cost allows the symbol to be used in the next
- * optimization pass.  However, the cost should be relatively high because the
- * symbol probably won't be used very many times (if at all).
- */
+ /*
+  * The NOSTAT_BITS value for a given alphabet is the number of bits assumed to
+  * be needed to output a symbol that was unused in the previous optimization
+  * pass.  Assigning a default cost allows the symbol to be used in the next
+  * optimization pass.  However, the cost should be relatively high because the
+  * symbol probably won't be used very many times (if at all).
+  */
 #define LITERAL_NOSTAT_BITS	13
 #define LENGTH_NOSTAT_BITS	13
 #define OFFSET_NOSTAT_BITS	10
 
 #endif /* SUPPORT_NEAR_OPTIMAL_PARSING */
 
-/*
- * Represents a run of literals followed by a match or end-of-block.  This
- * struct is needed to temporarily store items chosen by the parser, since items
- * cannot be written until all items for the block have been chosen and the
- * block's Huffman codes have been computed.
- */
+  /*
+   * Represents a run of literals followed by a match or end-of-block.  This
+   * struct is needed to temporarily store items chosen by the parser, since items
+   * cannot be written until all items for the block have been chosen and the
+   * block's Huffman codes have been computed.
+   */
 struct deflate_sequence {
 
 	/* Bits 0..22: the number of literals in this run.  This may be 0 and
@@ -327,8 +323,8 @@ struct block_split_stats {
 struct libdeflate_compressor {
 
 	/* Pointer to the compress() implementation chosen at allocation time */
-	size_t (*impl)(struct libdeflate_compressor *,
-		       const u8 *, size_t, u8 *, size_t);
+	size_t(*impl)(struct libdeflate_compressor*,
+		const u8*, size_t, u8*, size_t);
 
 	/* Frequency counters for the current block  */
 	struct deflate_freqs freqs;
@@ -393,11 +389,11 @@ struct libdeflate_compressor {
 			 * for the special entry at the end.  */
 			struct deflate_sequence sequences[
 				DIV_ROUND_UP(SOFT_MAX_BLOCK_LENGTH,
-					     DEFLATE_MIN_MATCH_LEN) + 1];
+					DEFLATE_MIN_MATCH_LEN) + 1];
 		} g; /* (g)reedy */
 
-	#if SUPPORT_NEAR_OPTIMAL_PARSING
-		/* Data for near-optimal parsing  */
+#if SUPPORT_NEAR_OPTIMAL_PARSING
+	/* Data for near-optimal parsing  */
 		struct {
 
 			/* Binary tree matchfinder  */
@@ -428,8 +424,8 @@ struct libdeflate_compressor {
 			 * the match count header for each.
 			 */
 			struct lz_match match_cache[CACHE_LENGTH +
-						    MAX_MATCHES_PER_POS +
-						    DEFLATE_MAX_MATCH_LEN - 1];
+				MAX_MATCHES_PER_POS +
+				DEFLATE_MAX_MATCH_LEN - 1];
 
 			/*
 			 * Array of nodes, one per position, for running the
@@ -444,14 +440,14 @@ struct libdeflate_compressor {
 			 * node.
 			 */
 			struct deflate_optimum_node optimum_nodes[SOFT_MAX_BLOCK_LENGTH - 1 +
-								  DEFLATE_MAX_MATCH_LEN + 1];
+				DEFLATE_MAX_MATCH_LEN + 1];
 
 			/* The current cost model being used.  */
 			struct deflate_costs costs;
 
 			unsigned num_optim_passes;
 		} n; /* (n)ear-optimal */
-	#endif /* SUPPORT_NEAR_OPTIMAL_PARSING */
+#endif /* SUPPORT_NEAR_OPTIMAL_PARSING */
 
 	} p; /* (p)arser */
 };
@@ -468,10 +464,10 @@ typedef machine_word_t bitbuf_t;
  * pending bytes have been flushed?  */
 #define CAN_BUFFER(n)	((n) <= BITBUF_NBITS - 7)
 
-/*
- * Structure to keep track of the current state of sending bits to the
- * compressed output buffer.
- */
+ /*
+  * Structure to keep track of the current state of sending bits to the
+  * compressed output buffer.
+  */
 struct deflate_output_bitstream {
 
 	/* Bits that haven't yet been written to the output buffer.  */
@@ -481,14 +477,14 @@ struct deflate_output_bitstream {
 	unsigned bitcount;
 
 	/* Pointer to the beginning of the output buffer.  */
-	u8 *begin;
+	u8* begin;
 
 	/* Pointer to the position in the output buffer at which the next byte
 	 * should be written.  */
-	u8 *next;
+	u8* next;
 
 	/* Pointer just past the end of the output buffer.  */
-	u8 *end;
+	u8* end;
 };
 
 /*
@@ -502,11 +498,11 @@ struct deflate_output_bitstream {
  */
 #define OUTPUT_END_PADDING	8
 
-/* Initialize the output bitstream.  'size' is assumed to be at least
- * OUTPUT_END_PADDING.  */
+ /* Initialize the output bitstream.  'size' is assumed to be at least
+  * OUTPUT_END_PADDING.  */
 static void
-deflate_init_output(struct deflate_output_bitstream *os,
-		    void *buffer, size_t size)
+deflate_init_output(struct deflate_output_bitstream* os,
+	void* buffer, size_t size)
 {
 	os->bitbuf = 0;
 	os->bitcount = 0;
@@ -518,8 +514,8 @@ deflate_init_output(struct deflate_output_bitstream *os,
 /* Add some bits to the bitbuffer variable of the output bitstream.  The caller
  * must make sure there is enough room.  */
 static forceinline void
-deflate_add_bits(struct deflate_output_bitstream *os,
-		 const bitbuf_t bits, const unsigned num_bits)
+deflate_add_bits(struct deflate_output_bitstream* os,
+	const bitbuf_t bits, const unsigned num_bits)
 {
 	os->bitbuf |= bits << os->bitcount;
 	os->bitcount += num_bits;
@@ -527,7 +523,7 @@ deflate_add_bits(struct deflate_output_bitstream *os,
 
 /* Flush bits from the bitbuffer variable to the output buffer.  */
 static forceinline void
-deflate_flush_bits(struct deflate_output_bitstream *os)
+deflate_flush_bits(struct deflate_output_bitstream* os)
 {
 	if (UNALIGNED_ACCESS_IS_FAST) {
 		/* Flush a whole word (branchlessly).  */
@@ -535,7 +531,8 @@ deflate_flush_bits(struct deflate_output_bitstream *os)
 		os->bitbuf >>= os->bitcount & ~7;
 		os->next += MIN(os->end - os->next, os->bitcount >> 3);
 		os->bitcount &= 7;
-	} else {
+	}
+	else {
 		/* Flush a byte at a time.  */
 		while (os->bitcount >= 8) {
 			*os->next = os->bitbuf;
@@ -549,9 +546,9 @@ deflate_flush_bits(struct deflate_output_bitstream *os)
 
 /* Align the bitstream on a byte boundary. */
 static forceinline void
-deflate_align_bitstream(struct deflate_output_bitstream *os)
+deflate_align_bitstream(struct deflate_output_bitstream* os)
 {
-	os->bitcount += ((unsigned)-((int)os->bitcount)) & 7;
+	os->bitcount += -os->bitcount & 7;
 	deflate_flush_bits(os);
 }
 
@@ -560,7 +557,7 @@ deflate_align_bitstream(struct deflate_output_bitstream *os)
  * number of bytes written to the output buffer, or 0 if an overflow occurred.
  */
 static size_t
-deflate_flush_output(struct deflate_output_bitstream *os)
+deflate_flush_output(struct deflate_output_bitstream* os)
 {
 	if (os->next == os->end) /* overflow?  */
 		return 0;
@@ -665,7 +662,7 @@ heap_sort(u32 A[], unsigned length)
  */
 static unsigned
 sort_symbols(unsigned num_syms, const u32 freqs[restrict],
-	     u8 lens[restrict], u32 symout[restrict])
+	u8 lens[restrict], u32 symout[restrict])
 {
 	unsigned sym;
 	unsigned i;
@@ -720,14 +717,15 @@ sort_symbols(unsigned num_syms, const u32 freqs[restrict],
 		if (freq != 0) {
 			symout[counters[MIN(freq, num_counters - 1)]++] =
 				sym | (freq << NUM_SYMBOL_BITS);
-		} else {
+		}
+		else {
 			lens[sym] = 0;
 		}
 	}
 
 	/* Sort the symbols counted in the last counter.  */
 	heap_sort(symout + counters[num_counters - 2],
-		  counters[num_counters - 1] - counters[num_counters - 2]);
+		counters[num_counters - 1] - counters[num_counters - 2]);
 
 	return num_used_syms;
 }
@@ -786,13 +784,13 @@ build_tree(u32 A[], unsigned sym_count)
 		/* Choose the two next lowest frequency entries.  */
 
 		if (i != sym_count &&
-		    (b == e || (A[i] >> NUM_SYMBOL_BITS) <= (A[b] >> NUM_SYMBOL_BITS)))
+			(b == e || (A[i] >> NUM_SYMBOL_BITS) <= (A[b] >> NUM_SYMBOL_BITS)))
 			m = i++;
 		else
 			m = b++;
 
 		if (i != sym_count &&
-		    (b == e || (A[i] >> NUM_SYMBOL_BITS) <= (A[b] >> NUM_SYMBOL_BITS)))
+			(b == e || (A[i] >> NUM_SYMBOL_BITS) <= (A[b] >> NUM_SYMBOL_BITS)))
 			n = i++;
 		else
 			n = b++;
@@ -816,11 +814,11 @@ build_tree(u32 A[], unsigned sym_count)
 		A[e] = (A[e] & SYMBOL_MASK) | freq_shifted;
 		e++;
 	} while (sym_count - e > 1);
-		/* When just one entry remains, it is a "leaf" that was
-		 * linked to some other node.  We ignore it, since the
-		 * rest of the array contains the non-leaves which we
-		 * need.  (Note that we're assuming the cases with 0 or 1
-		 * symbols were handled separately.) */
+	/* When just one entry remains, it is a "leaf" that was
+	 * linked to some other node.  We ignore it, since the
+	 * rest of the array contains the non-leaves which we
+	 * need.  (Note that we're assuming the cases with 0 or 1
+	 * symbols were handled separately.) */
 }
 
 /*
@@ -852,7 +850,7 @@ build_tree(u32 A[], unsigned sym_count)
  */
 static void
 compute_length_counts(u32 A[restrict], unsigned root_idx,
-		      unsigned len_counts[restrict], unsigned max_codeword_len)
+	unsigned len_counts[restrict], unsigned max_codeword_len)
 {
 	unsigned len;
 	int node;
@@ -943,8 +941,8 @@ compute_length_counts(u32 A[restrict], unsigned root_idx,
  */
 static void
 gen_codewords(u32 A[restrict], u8 lens[restrict],
-	      const unsigned len_counts[restrict],
-	      unsigned max_codeword_len, unsigned num_syms)
+	const unsigned len_counts[restrict],
+	unsigned max_codeword_len, unsigned num_syms)
 {
 	u32 next_codewords[DEFLATE_MAX_CODEWORD_LEN + 1];
 	unsigned i;
@@ -970,7 +968,7 @@ gen_codewords(u32 A[restrict], u8 lens[restrict],
 	next_codewords[1] = 0;
 	for (len = 2; len <= max_codeword_len; len++)
 		next_codewords[len] =
-			(next_codewords[len - 1] + len_counts[len - 1]) << 1;
+		(next_codewords[len - 1] + len_counts[len - 1]) << 1;
 
 	for (sym = 0; sym < num_syms; sym++)
 		A[sym] = next_codewords[lens[sym]]++;
@@ -1086,10 +1084,10 @@ gen_codewords(u32 A[restrict], u8 lens[restrict],
  */
 static void
 make_canonical_huffman_code(unsigned num_syms, unsigned max_codeword_len,
-			    const u32 freqs[restrict],
-			    u8 lens[restrict], u32 codewords[restrict])
+	const u32 freqs[restrict],
+	u8 lens[restrict], u32 codewords[restrict])
 {
-	u32 *A = codewords;
+	u32* A = codewords;
 	unsigned num_used_syms;
 
 	STATIC_ASSERT(DEFLATE_MAX_NUM_SYMS <= 1 << NUM_SYMBOL_BITS);
@@ -1107,8 +1105,8 @@ make_canonical_huffman_code(unsigned num_syms, unsigned max_codeword_len,
 	 * entry consists of a distinct symbol and a nonzero frequency
 	 * packed into a 32-bit integer.  */
 
-	/* Handle special cases where only 0 or 1 symbols were used (had
-	 * nonzero frequency).  */
+	 /* Handle special cases where only 0 or 1 symbols were used (had
+	  * nonzero frequency).  */
 
 	if (unlikely(num_used_syms == 0)) {
 		/* Code is empty.  sort_symbols() already set all lengths
@@ -1146,7 +1144,7 @@ make_canonical_huffman_code(unsigned num_syms, unsigned max_codeword_len,
 		unsigned len_counts[DEFLATE_MAX_CODEWORD_LEN + 1];
 
 		compute_length_counts(A, num_used_syms - 2,
-				      len_counts, max_codeword_len);
+			len_counts, max_codeword_len);
 
 		gen_codewords(A, lens, len_counts, max_codeword_len, num_syms);
 	}
@@ -1157,7 +1155,7 @@ make_canonical_huffman_code(unsigned num_syms, unsigned max_codeword_len,
  * This must be called when starting a new DEFLATE block.
  */
 static void
-deflate_reset_symbol_frequencies(struct libdeflate_compressor *c)
+deflate_reset_symbol_frequencies(struct libdeflate_compressor* c)
 {
 	memset(&c->freqs, 0, sizeof(c->freqs));
 }
@@ -1190,12 +1188,12 @@ deflate_reverse_codeword(u32 codeword, u8 len)
 /* Make a canonical Huffman code with bit-reversed codewords.  */
 static void
 deflate_make_huffman_code(unsigned num_syms, unsigned max_codeword_len,
-			  const u32 freqs[], u8 lens[], u32 codewords[])
+	const u32 freqs[], u8 lens[], u32 codewords[])
 {
 	unsigned sym;
 
 	make_canonical_huffman_code(num_syms, max_codeword_len,
-				    freqs, lens, codewords);
+		freqs, lens, codewords);
 
 	for (sym = 0; sym < num_syms; sym++)
 		codewords[sym] = deflate_reverse_codeword(codewords[sym], lens[sym]);
@@ -1208,28 +1206,28 @@ deflate_make_huffman_code(unsigned num_syms, unsigned max_codeword_len,
  * a set of tables that map symbols to codewords and codeword lengths.
  */
 static void
-deflate_make_huffman_codes(const struct deflate_freqs *freqs,
-			   struct deflate_codes *codes)
+deflate_make_huffman_codes(const struct deflate_freqs* freqs,
+	struct deflate_codes* codes)
 {
 	STATIC_ASSERT(MAX_LITLEN_CODEWORD_LEN <= DEFLATE_MAX_LITLEN_CODEWORD_LEN);
 	STATIC_ASSERT(MAX_OFFSET_CODEWORD_LEN <= DEFLATE_MAX_OFFSET_CODEWORD_LEN);
 
 	deflate_make_huffman_code(DEFLATE_NUM_LITLEN_SYMS,
-				  MAX_LITLEN_CODEWORD_LEN,
-				  freqs->litlen,
-				  codes->lens.litlen,
-				  codes->codewords.litlen);
+		MAX_LITLEN_CODEWORD_LEN,
+		freqs->litlen,
+		codes->lens.litlen,
+		codes->codewords.litlen);
 
 	deflate_make_huffman_code(DEFLATE_NUM_OFFSET_SYMS,
-				  MAX_OFFSET_CODEWORD_LEN,
-				  freqs->offset,
-				  codes->lens.offset,
-				  codes->codewords.offset);
+		MAX_OFFSET_CODEWORD_LEN,
+		freqs->offset,
+		codes->lens.offset,
+		codes->codewords.offset);
 }
 
 /* Initialize c->static_codes.  */
 static void
-deflate_init_static_codes(struct libdeflate_compressor *c)
+deflate_init_static_codes(struct libdeflate_compressor* c)
 {
 	unsigned i;
 
@@ -1250,7 +1248,7 @@ deflate_init_static_codes(struct libdeflate_compressor *c)
 
 /* Return the offset slot for the specified match offset.  */
 static forceinline unsigned
-deflate_get_offset_slot(struct libdeflate_compressor *c, unsigned offset)
+deflate_get_offset_slot(struct libdeflate_compressor* c, unsigned offset)
 {
 #if USE_FULL_OFFSET_SLOT_FAST
 	return c->offset_slot_fast[offset];
@@ -1264,8 +1262,8 @@ deflate_get_offset_slot(struct libdeflate_compressor *c, unsigned offset)
 
 /* Write the header fields common to all DEFLATE block types.  */
 static void
-deflate_write_block_header(struct deflate_output_bitstream *os,
-			   bool is_final_block, unsigned block_type)
+deflate_write_block_header(struct deflate_output_bitstream* os,
+	bool is_final_block, unsigned block_type)
 {
 	deflate_add_bits(os, is_final_block, 1);
 	deflate_add_bits(os, block_type, 2);
@@ -1274,18 +1272,18 @@ deflate_write_block_header(struct deflate_output_bitstream *os,
 
 static unsigned
 deflate_compute_precode_items(const u8 lens[restrict],
-			      const unsigned num_lens,
-			      u32 precode_freqs[restrict],
-			      unsigned precode_items[restrict])
+	const unsigned num_lens,
+	u32 precode_freqs[restrict],
+	unsigned precode_items[restrict])
 {
-	unsigned *itemptr;
+	unsigned* itemptr;
 	unsigned run_start;
 	unsigned run_end;
 	unsigned extra_bits;
 	u8 len;
 
 	memset(precode_freqs, 0,
-	       DEFLATE_NUM_PRECODE_SYMS * sizeof(precode_freqs[0]));
+		DEFLATE_NUM_PRECODE_SYMS * sizeof(precode_freqs[0]));
 
 	itemptr = precode_items;
 	run_start = 0;
@@ -1319,7 +1317,8 @@ deflate_compute_precode_items(const u8 lens[restrict],
 				*itemptr++ = 17 | (extra_bits << 5);
 				run_start += 3 + extra_bits;
 			}
-		} else {
+		}
+		else {
 
 			/* A run of nonzero lengths. */
 
@@ -1358,21 +1357,21 @@ deflate_compute_precode_items(const u8 lens[restrict],
  * immediately precede the compressed codeword lengths of the larger code.
  */
 
-/* Precompute the information needed to output Huffman codes. */
+ /* Precompute the information needed to output Huffman codes. */
 static void
-deflate_precompute_huffman_header(struct libdeflate_compressor *c)
+deflate_precompute_huffman_header(struct libdeflate_compressor* c)
 {
 	/* Compute how many litlen and offset symbols are needed. */
 
 	for (c->num_litlen_syms = DEFLATE_NUM_LITLEN_SYMS;
-	     c->num_litlen_syms > 257;
-	     c->num_litlen_syms--)
+		c->num_litlen_syms > 257;
+		c->num_litlen_syms--)
 		if (c->codes.lens.litlen[c->num_litlen_syms - 1] != 0)
 			break;
 
 	for (c->num_offset_syms = DEFLATE_NUM_OFFSET_SYMS;
-	     c->num_offset_syms > 1;
-	     c->num_offset_syms--)
+		c->num_offset_syms > 1;
+		c->num_offset_syms--)
 		if (c->codes.lens.offset[c->num_offset_syms - 1] != 0)
 			break;
 
@@ -1381,50 +1380,50 @@ deflate_precompute_huffman_header(struct libdeflate_compressor *c)
 	 * literal/length and offset codeword lengths are contiguous. */
 
 	STATIC_ASSERT(offsetof(struct deflate_lens, offset) ==
-		      DEFLATE_NUM_LITLEN_SYMS);
+		DEFLATE_NUM_LITLEN_SYMS);
 
 	if (c->num_litlen_syms != DEFLATE_NUM_LITLEN_SYMS) {
-		memmove((u8 *)&c->codes.lens + c->num_litlen_syms,
-			(u8 *)&c->codes.lens + DEFLATE_NUM_LITLEN_SYMS,
+		memmove((u8*)&c->codes.lens + c->num_litlen_syms,
+			(u8*)&c->codes.lens + DEFLATE_NUM_LITLEN_SYMS,
 			c->num_offset_syms);
 	}
 
 	/* Compute the "items" (RLE / literal tokens and extra bits) with which
 	 * the codeword lengths in the larger code will be output. */
 	c->num_precode_items =
-		deflate_compute_precode_items((u8 *)&c->codes.lens,
-					      c->num_litlen_syms +
-							c->num_offset_syms,
-					      c->precode_freqs,
-					      c->precode_items);
+		deflate_compute_precode_items((u8*)&c->codes.lens,
+			c->num_litlen_syms +
+			c->num_offset_syms,
+			c->precode_freqs,
+			c->precode_items);
 
 	/* Build the precode. */
 	STATIC_ASSERT(MAX_PRE_CODEWORD_LEN <= DEFLATE_MAX_PRE_CODEWORD_LEN);
 	deflate_make_huffman_code(DEFLATE_NUM_PRECODE_SYMS,
-				  MAX_PRE_CODEWORD_LEN,
-				  c->precode_freqs, c->precode_lens,
-				  c->precode_codewords);
+		MAX_PRE_CODEWORD_LEN,
+		c->precode_freqs, c->precode_lens,
+		c->precode_codewords);
 
 	/* Count how many precode lengths we actually need to output. */
 	for (c->num_explicit_lens = DEFLATE_NUM_PRECODE_SYMS;
-	     c->num_explicit_lens > 4;
-	     c->num_explicit_lens--)
+		c->num_explicit_lens > 4;
+		c->num_explicit_lens--)
 		if (c->precode_lens[deflate_precode_lens_permutation[
-						c->num_explicit_lens - 1]] != 0)
+			c->num_explicit_lens - 1]] != 0)
 			break;
 
-	/* Restore the offset codeword lengths if needed. */
-	if (c->num_litlen_syms != DEFLATE_NUM_LITLEN_SYMS) {
-		memmove((u8 *)&c->codes.lens + DEFLATE_NUM_LITLEN_SYMS,
-			(u8 *)&c->codes.lens + c->num_litlen_syms,
-			c->num_offset_syms);
-	}
+			/* Restore the offset codeword lengths if needed. */
+			if (c->num_litlen_syms != DEFLATE_NUM_LITLEN_SYMS) {
+				memmove((u8*)&c->codes.lens + DEFLATE_NUM_LITLEN_SYMS,
+					(u8*)&c->codes.lens + c->num_litlen_syms,
+					c->num_offset_syms);
+			}
 }
 
 /* Output the Huffman codes. */
 static void
-deflate_write_huffman_header(struct libdeflate_compressor *c,
-			     struct deflate_output_bitstream *os)
+deflate_write_huffman_header(struct libdeflate_compressor* c,
+	struct deflate_output_bitstream* os)
 {
 	unsigned i;
 
@@ -1436,7 +1435,7 @@ deflate_write_huffman_header(struct libdeflate_compressor *c,
 	/* Output the lengths of the codewords in the precode.  */
 	for (i = 0; i < c->num_explicit_lens; i++) {
 		deflate_add_bits(os, c->precode_lens[
-				       deflate_precode_lens_permutation[i]], 3);
+			deflate_precode_lens_permutation[i]], 3);
 		deflate_flush_bits(os);
 	}
 
@@ -1445,7 +1444,7 @@ deflate_write_huffman_header(struct libdeflate_compressor *c,
 		unsigned precode_item = c->precode_items[i];
 		unsigned precode_sym = precode_item & 0x1F;
 		deflate_add_bits(os, c->precode_codewords[precode_sym],
-				 c->precode_lens[precode_sym]);
+			c->precode_lens[precode_sym]);
 		if (precode_sym >= 16) {
 			if (precode_sym == 16)
 				deflate_add_bits(os, precode_item >> 5, 2);
@@ -1460,12 +1459,12 @@ deflate_write_huffman_header(struct libdeflate_compressor *c,
 }
 
 static void
-deflate_write_sequences(struct deflate_output_bitstream * restrict os,
-			const struct deflate_codes * restrict codes,
-			const struct deflate_sequence sequences[restrict],
-			const u8 * restrict in_next)
+deflate_write_sequences(struct deflate_output_bitstream* restrict os,
+	const struct deflate_codes* restrict codes,
+	const struct deflate_sequence sequences[restrict],
+	const u8* restrict in_next)
 {
-	const struct deflate_sequence *seq = sequences;
+	const struct deflate_sequence* seq = sequences;
 
 	for (;;) {
 		u32 litrunlen = seq->litrunlen_and_length & 0x7FFFFF;
@@ -1475,7 +1474,7 @@ deflate_write_sequences(struct deflate_output_bitstream * restrict os,
 		unsigned offset_symbol;
 
 		if (litrunlen) {
-		#if 1
+#if 1
 			while (litrunlen >= 4) {
 				unsigned lit0 = in_next[0];
 				unsigned lit1 = in_next[1];
@@ -1483,41 +1482,41 @@ deflate_write_sequences(struct deflate_output_bitstream * restrict os,
 				unsigned lit3 = in_next[3];
 
 				deflate_add_bits(os, codes->codewords.litlen[lit0],
-						 codes->lens.litlen[lit0]);
+					codes->lens.litlen[lit0]);
 				if (!CAN_BUFFER(2 * MAX_LITLEN_CODEWORD_LEN))
 					deflate_flush_bits(os);
 
 				deflate_add_bits(os, codes->codewords.litlen[lit1],
-						 codes->lens.litlen[lit1]);
+					codes->lens.litlen[lit1]);
 				if (!CAN_BUFFER(4 * MAX_LITLEN_CODEWORD_LEN))
 					deflate_flush_bits(os);
 
 				deflate_add_bits(os, codes->codewords.litlen[lit2],
-						 codes->lens.litlen[lit2]);
+					codes->lens.litlen[lit2]);
 				if (!CAN_BUFFER(2 * MAX_LITLEN_CODEWORD_LEN))
 					deflate_flush_bits(os);
 
 				deflate_add_bits(os, codes->codewords.litlen[lit3],
-						 codes->lens.litlen[lit3]);
+					codes->lens.litlen[lit3]);
 				deflate_flush_bits(os);
 				in_next += 4;
 				litrunlen -= 4;
 			}
 			if (litrunlen-- != 0) {
 				deflate_add_bits(os, codes->codewords.litlen[*in_next],
-						 codes->lens.litlen[*in_next]);
+					codes->lens.litlen[*in_next]);
 				if (!CAN_BUFFER(3 * MAX_LITLEN_CODEWORD_LEN))
 					deflate_flush_bits(os);
 				in_next++;
 				if (litrunlen-- != 0) {
 					deflate_add_bits(os, codes->codewords.litlen[*in_next],
-							 codes->lens.litlen[*in_next]);
+						codes->lens.litlen[*in_next]);
 					if (!CAN_BUFFER(3 * MAX_LITLEN_CODEWORD_LEN))
 						deflate_flush_bits(os);
 					in_next++;
 					if (litrunlen-- != 0) {
 						deflate_add_bits(os, codes->codewords.litlen[*in_next],
-								 codes->lens.litlen[*in_next]);
+							codes->lens.litlen[*in_next]);
 						if (!CAN_BUFFER(3 * MAX_LITLEN_CODEWORD_LEN))
 							deflate_flush_bits(os);
 						in_next++;
@@ -1526,14 +1525,14 @@ deflate_write_sequences(struct deflate_output_bitstream * restrict os,
 				if (CAN_BUFFER(3 * MAX_LITLEN_CODEWORD_LEN))
 					deflate_flush_bits(os);
 			}
-		#else
+#else
 			do {
 				unsigned lit = *in_next++;
 				deflate_add_bits(os, codes->codewords.litlen[lit],
-						 codes->lens.litlen[lit]);
+					codes->lens.litlen[lit]);
 				deflate_flush_bits(os);
 			} while (--litrunlen);
-		#endif
+#endif
 		}
 
 		if (length == 0)
@@ -1546,32 +1545,32 @@ deflate_write_sequences(struct deflate_output_bitstream * restrict os,
 
 		/* Litlen symbol  */
 		deflate_add_bits(os, codes->codewords.litlen[litlen_symbol],
-				 codes->lens.litlen[litlen_symbol]);
+			codes->lens.litlen[litlen_symbol]);
 
 		/* Extra length bits  */
 		STATIC_ASSERT(CAN_BUFFER(MAX_LITLEN_CODEWORD_LEN +
-					 DEFLATE_MAX_EXTRA_LENGTH_BITS));
+			DEFLATE_MAX_EXTRA_LENGTH_BITS));
 		deflate_add_bits(os, length - deflate_length_slot_base[length_slot],
-				 deflate_extra_length_bits[length_slot]);
+			deflate_extra_length_bits[length_slot]);
 
 		if (!CAN_BUFFER(MAX_LITLEN_CODEWORD_LEN +
-				DEFLATE_MAX_EXTRA_LENGTH_BITS +
-				MAX_OFFSET_CODEWORD_LEN +
-				DEFLATE_MAX_EXTRA_OFFSET_BITS))
+			DEFLATE_MAX_EXTRA_LENGTH_BITS +
+			MAX_OFFSET_CODEWORD_LEN +
+			DEFLATE_MAX_EXTRA_OFFSET_BITS))
 			deflate_flush_bits(os);
 
 		/* Offset symbol  */
 		offset_symbol = seq->offset_symbol;
 		deflate_add_bits(os, codes->codewords.offset[offset_symbol],
-				 codes->lens.offset[offset_symbol]);
+			codes->lens.offset[offset_symbol]);
 
 		if (!CAN_BUFFER(MAX_OFFSET_CODEWORD_LEN +
-				DEFLATE_MAX_EXTRA_OFFSET_BITS))
+			DEFLATE_MAX_EXTRA_OFFSET_BITS))
 			deflate_flush_bits(os);
 
 		/* Extra offset bits  */
 		deflate_add_bits(os, seq->offset - deflate_offset_slot_base[offset_symbol],
-				 deflate_extra_offset_bits[offset_symbol]);
+			deflate_extra_offset_bits[offset_symbol]);
 
 		deflate_flush_bits(os);
 
@@ -1590,13 +1589,13 @@ deflate_write_sequences(struct deflate_output_bitstream * restrict os,
  * match/literal representations.
  */
 static void
-deflate_write_item_list(struct deflate_output_bitstream *os,
-			const struct deflate_codes *codes,
-			struct libdeflate_compressor *c,
-			u32 block_length)
+deflate_write_item_list(struct deflate_output_bitstream* os,
+	const struct deflate_codes* codes,
+	struct libdeflate_compressor* c,
+	u32 block_length)
 {
-	struct deflate_optimum_node *cur_node = &c->p.n.optimum_nodes[0];
-	struct deflate_optimum_node * const end_node = &c->p.n.optimum_nodes[block_length];
+	struct deflate_optimum_node* cur_node = &c->p.n.optimum_nodes[0];
+	struct deflate_optimum_node* const end_node = &c->p.n.optimum_nodes[block_length];
 	do {
 		unsigned length = cur_node->item & OPTIMUM_LEN_MASK;
 		unsigned offset = cur_node->item >> OPTIMUM_OFFSET_SHIFT;
@@ -1608,36 +1607,37 @@ deflate_write_item_list(struct deflate_output_bitstream *os,
 			/* Literal  */
 			litlen_symbol = offset;
 			deflate_add_bits(os, codes->codewords.litlen[litlen_symbol],
-					 codes->lens.litlen[litlen_symbol]);
+				codes->lens.litlen[litlen_symbol]);
 			deflate_flush_bits(os);
-		} else {
+		}
+		else {
 			/* Match length  */
 			length_slot = deflate_length_slot[length];
 			litlen_symbol = 257 + length_slot;
 			deflate_add_bits(os, codes->codewords.litlen[litlen_symbol],
-					 codes->lens.litlen[litlen_symbol]);
+				codes->lens.litlen[litlen_symbol]);
 
 			deflate_add_bits(os, length - deflate_length_slot_base[length_slot],
-					 deflate_extra_length_bits[length_slot]);
+				deflate_extra_length_bits[length_slot]);
 
 			if (!CAN_BUFFER(MAX_LITLEN_CODEWORD_LEN +
-					DEFLATE_MAX_EXTRA_LENGTH_BITS +
-					MAX_OFFSET_CODEWORD_LEN +
-					DEFLATE_MAX_EXTRA_OFFSET_BITS))
+				DEFLATE_MAX_EXTRA_LENGTH_BITS +
+				MAX_OFFSET_CODEWORD_LEN +
+				DEFLATE_MAX_EXTRA_OFFSET_BITS))
 				deflate_flush_bits(os);
 
 
 			/* Match offset  */
 			offset_slot = deflate_get_offset_slot(c, offset);
 			deflate_add_bits(os, codes->codewords.offset[offset_slot],
-					 codes->lens.offset[offset_slot]);
+				codes->lens.offset[offset_slot]);
 
 			if (!CAN_BUFFER(MAX_OFFSET_CODEWORD_LEN +
-					DEFLATE_MAX_EXTRA_OFFSET_BITS))
+				DEFLATE_MAX_EXTRA_OFFSET_BITS))
 				deflate_flush_bits(os);
 
 			deflate_add_bits(os, offset - deflate_offset_slot_base[offset_slot],
-					 deflate_extra_offset_bits[offset_slot]);
+				deflate_extra_offset_bits[offset_slot]);
 
 			deflate_flush_bits(os);
 		}
@@ -1648,21 +1648,21 @@ deflate_write_item_list(struct deflate_output_bitstream *os,
 
 /* Output the end-of-block symbol.  */
 static void
-deflate_write_end_of_block(struct deflate_output_bitstream *os,
-			   const struct deflate_codes *codes)
+deflate_write_end_of_block(struct deflate_output_bitstream* os,
+	const struct deflate_codes* codes)
 {
 	deflate_add_bits(os, codes->codewords.litlen[DEFLATE_END_OF_BLOCK],
-			 codes->lens.litlen[DEFLATE_END_OF_BLOCK]);
+		codes->lens.litlen[DEFLATE_END_OF_BLOCK]);
 	deflate_flush_bits(os);
 }
 
 static void
-deflate_write_uncompressed_block(struct deflate_output_bitstream *os,
-				 const u8 *data, u16 len,
-				 bool is_final_block)
+deflate_write_uncompressed_block(struct deflate_output_bitstream* os,
+	const u8* data, u16 len,
+	bool is_final_block)
 {
 	deflate_write_block_header(os, is_final_block,
-				   DEFLATE_BLOCKTYPE_UNCOMPRESSED);
+		DEFLATE_BLOCKTYPE_UNCOMPRESSED);
 	deflate_align_bitstream(os);
 
 	if (4 + (u32)len >= os->end - os->next) {
@@ -1679,15 +1679,15 @@ deflate_write_uncompressed_block(struct deflate_output_bitstream *os,
 }
 
 static void
-deflate_write_uncompressed_blocks(struct deflate_output_bitstream *os,
-				  const u8 *data, u32 data_length,
-				  bool is_final_block)
+deflate_write_uncompressed_blocks(struct deflate_output_bitstream* os,
+	const u8* data, u32 data_length,
+	bool is_final_block)
 {
 	do {
 		u16 len = MIN(data_length, UINT16_MAX);
 
 		deflate_write_uncompressed_block(os, data, len,
-					is_final_block && len == data_length);
+			is_final_block && len == data_length);
 		data += len;
 		data_length -= len;
 	} while (data_length != 0);
@@ -1698,10 +1698,10 @@ deflate_write_uncompressed_blocks(struct deflate_output_bitstream *os,
  * uncompressed), then output it.
  */
 static void
-deflate_flush_block(struct libdeflate_compressor * restrict c,
-		    struct deflate_output_bitstream * restrict os,
-		    const u8 * restrict block_begin, u32 block_length,
-		    bool is_final_block, bool use_item_list)
+deflate_flush_block(struct libdeflate_compressor* restrict c,
+	struct deflate_output_bitstream* restrict os,
+	const u8* restrict block_begin, u32 block_length,
+	bool is_final_block, bool use_item_list)
 {
 	static const u8 deflate_extra_precode_bits[DEFLATE_NUM_PRECODE_SYMS] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7,
@@ -1711,7 +1711,7 @@ deflate_flush_block(struct libdeflate_compressor * restrict c,
 	u32 dynamic_cost = 0;
 	u32 static_cost = 0;
 	u32 uncompressed_cost = 0;
-	struct deflate_codes* codes = { 0 };
+	struct deflate_codes* codes;
 	int block_type;
 	unsigned sym;
 
@@ -1727,13 +1727,13 @@ deflate_flush_block(struct libdeflate_compressor * restrict c,
 	for (sym = 0; sym < DEFLATE_NUM_PRECODE_SYMS; sym++) {
 		u32 extra = deflate_extra_precode_bits[sym];
 		dynamic_cost += c->precode_freqs[sym] *
-				(extra + c->precode_lens[sym]);
+			(extra + c->precode_lens[sym]);
 	}
 
 	/* Account for the cost of encoding literals. */
 	for (sym = 0; sym < 256; sym++) {
 		dynamic_cost += c->freqs.litlen[sym] *
-				c->codes.lens.litlen[sym];
+			c->codes.lens.litlen[sym];
 	}
 	for (sym = 0; sym < 144; sym++)
 		static_cost += c->freqs.litlen[sym] * 8;
@@ -1748,33 +1748,35 @@ deflate_flush_block(struct libdeflate_compressor * restrict c,
 	for (sym = 257; sym < 257 + ARRAY_LEN(deflate_extra_length_bits); sym++) {
 		u32 extra = deflate_extra_length_bits[sym - 257];
 		dynamic_cost += c->freqs.litlen[sym] *
-				(extra + c->codes.lens.litlen[sym]);
+			(extra + c->codes.lens.litlen[sym]);
 		static_cost += c->freqs.litlen[sym] *
-				(extra + c->static_codes.lens.litlen[sym]);
+			(extra + c->static_codes.lens.litlen[sym]);
 	}
 
 	/* Account for the cost of encoding offsets. */
 	for (sym = 0; sym < ARRAY_LEN(deflate_extra_offset_bits); sym++) {
 		u32 extra = deflate_extra_offset_bits[sym];
 		dynamic_cost += c->freqs.offset[sym] *
-				(extra + c->codes.lens.offset[sym]);
+			(extra + c->codes.lens.offset[sym]);
 		static_cost += c->freqs.offset[sym] * (extra + 5);
 	}
 
 	/* Compute the cost of using uncompressed blocks. */
-	uncompressed_cost += (((unsigned)-((int)os->bitcount + 3)) & 7) + 32 +
-			     (40 * (DIV_ROUND_UP(block_length,
-						 UINT16_MAX) - 1)) +
-			     (8 * block_length);
+	uncompressed_cost += (-(os->bitcount + 3) & 7) + 32 +
+		(40 * (DIV_ROUND_UP(block_length,
+			UINT16_MAX) - 1)) +
+		(8 * block_length);
 
 	/* Choose the cheapest block type. */
 	if (dynamic_cost < MIN(static_cost, uncompressed_cost)) {
 		block_type = DEFLATE_BLOCKTYPE_DYNAMIC_HUFFMAN;
 		codes = &c->codes;
-	} else if (static_cost < uncompressed_cost) {
+	}
+	else if (static_cost < uncompressed_cost) {
 		block_type = DEFLATE_BLOCKTYPE_STATIC_HUFFMAN;
 		codes = &c->static_codes;
-	} else {
+	}
+	else {
 		block_type = DEFLATE_BLOCKTYPE_UNCOMPRESSED;
 	}
 
@@ -1785,8 +1787,9 @@ deflate_flush_block(struct libdeflate_compressor * restrict c,
 		 * of an uncompressed block (65535 bytes).  Therefore, more than
 		 * one uncompressed block might be needed. */
 		deflate_write_uncompressed_blocks(os, block_begin, block_length,
-						  is_final_block);
-	} else {
+			is_final_block);
+	}
+	else {
 		/* Output the block header. */
 		deflate_write_block_header(os, is_final_block, block_type);
 
@@ -1795,31 +1798,31 @@ deflate_flush_block(struct libdeflate_compressor * restrict c,
 			deflate_write_huffman_header(c, os);
 
 		/* Output the literals, matches, and end-of-block symbol. */
-	#if SUPPORT_NEAR_OPTIMAL_PARSING
+#if SUPPORT_NEAR_OPTIMAL_PARSING
 		if (use_item_list)
 			deflate_write_item_list(os, codes, c, block_length);
 		else
-	#endif
+#endif
 			deflate_write_sequences(os, codes, c->p.g.sequences,
-						block_begin);
+				block_begin);
 		deflate_write_end_of_block(os, codes);
 	}
 }
 
 static forceinline void
-deflate_choose_literal(struct libdeflate_compressor *c, unsigned literal,
-		       u32 *litrunlen_p)
+deflate_choose_literal(struct libdeflate_compressor* c, unsigned literal,
+	u32* litrunlen_p)
 {
 	c->freqs.litlen[literal]++;
-	++*litrunlen_p;
+	++* litrunlen_p;
 }
 
 static forceinline void
-deflate_choose_match(struct libdeflate_compressor *c,
-		     unsigned length, unsigned offset,
-		     u32 *litrunlen_p, struct deflate_sequence **next_seq_p)
+deflate_choose_match(struct libdeflate_compressor* c,
+	unsigned length, unsigned offset,
+	u32* litrunlen_p, struct deflate_sequence** next_seq_p)
 {
-	struct deflate_sequence *seq = *next_seq_p;
+	struct deflate_sequence* seq = *next_seq_p;
 	unsigned length_slot = deflate_length_slot[length];
 	unsigned offset_slot = deflate_get_offset_slot(c, offset);
 
@@ -1836,7 +1839,7 @@ deflate_choose_match(struct libdeflate_compressor *c,
 }
 
 static forceinline void
-deflate_finish_sequence(struct deflate_sequence *seq, u32 litrunlen)
+deflate_finish_sequence(struct deflate_sequence* seq, u32 litrunlen)
 {
 	seq->litrunlen_and_length = litrunlen; /* length = 0 */
 }
@@ -1879,9 +1882,9 @@ deflate_finish_sequence(struct deflate_sequence *seq, u32 litrunlen)
  * cannot be used, we can use preliminary "greedy" choices instead.
  */
 
-/* Initialize the block split statistics when starting a new block. */
+ /* Initialize the block split statistics when starting a new block. */
 static void
-init_block_split_stats(struct block_split_stats *stats)
+init_block_split_stats(struct block_split_stats* stats)
 {
 	int i;
 
@@ -1896,7 +1899,7 @@ init_block_split_stats(struct block_split_stats *stats)
 /* Literal observation.  Heuristic: use the top 2 bits and low 1 bits of the
  * literal, for 8 possible literal observation types.  */
 static forceinline void
-observe_literal(struct block_split_stats *stats, u8 lit)
+observe_literal(struct block_split_stats* stats, u8 lit)
 {
 	stats->new_observations[((lit >> 5) & 0x6) | (lit & 1)]++;
 	stats->num_new_observations++;
@@ -1905,14 +1908,14 @@ observe_literal(struct block_split_stats *stats, u8 lit)
 /* Match observation.  Heuristic: use one observation type for "short match" and
  * one observation type for "long match".  */
 static forceinline void
-observe_match(struct block_split_stats *stats, unsigned length)
+observe_match(struct block_split_stats* stats, unsigned length)
 {
 	stats->new_observations[NUM_LITERAL_OBSERVATION_TYPES + (length >= 9)]++;
 	stats->num_new_observations++;
 }
 
 static bool
-do_end_block_check(struct block_split_stats *stats, u32 block_length)
+do_end_block_check(struct block_split_stats* stats, u32 block_length)
 {
 	int i;
 
@@ -1926,13 +1929,13 @@ do_end_block_check(struct block_split_stats *stats, u32 block_length)
 			u32 expected = stats->observations[i] * stats->num_new_observations;
 			u32 actual = stats->new_observations[i] * stats->num_observations;
 			u32 delta = (actual > expected) ? actual - expected :
-							  expected - actual;
+				expected - actual;
 			total_delta += delta;
 		}
 
 		/* Ready to end the block? */
 		if (total_delta + (block_length / 4096) * stats->num_observations >=
-		    NUM_OBSERVATIONS_PER_BLOCK_CHECK * 200 / 512 * stats->num_observations)
+			NUM_OBSERVATIONS_PER_BLOCK_CHECK * 200 / 512 * stats->num_observations)
 			return true;
 	}
 
@@ -1946,13 +1949,13 @@ do_end_block_check(struct block_split_stats *stats, u32 block_length)
 }
 
 static forceinline bool
-should_end_block(struct block_split_stats *stats,
-		 const u8 *in_block_begin, const u8 *in_next, const u8 *in_end)
+should_end_block(struct block_split_stats* stats,
+	const u8* in_block_begin, const u8* in_next, const u8* in_end)
 {
 	/* Ready to check block split statistics? */
 	if (stats->num_new_observations < NUM_OBSERVATIONS_PER_BLOCK_CHECK ||
-	    in_next - in_block_begin < MIN_BLOCK_LENGTH ||
-	    in_end - in_next < MIN_BLOCK_LENGTH)
+		in_next - in_block_begin < MIN_BLOCK_LENGTH ||
+		in_end - in_next < MIN_BLOCK_LENGTH)
 		return false;
 
 	return do_end_block_check(stats, in_next - in_block_begin);
@@ -1963,18 +1966,18 @@ should_end_block(struct block_split_stats *stats,
 /*
  * This is the "greedy" DEFLATE compressor. It always chooses the longest match.
  */
-static size_t 
-deflate_compress_greedy(struct libdeflate_compressor * restrict c,
-			const u8 * restrict in, size_t in_nbytes,
-			u8 * restrict out, size_t out_nbytes_avail)
+static size_t
+deflate_compress_greedy(struct libdeflate_compressor* restrict c,
+	const u8* restrict in, size_t in_nbytes,
+	u8* restrict out, size_t out_nbytes_avail)
 {
-	const u8 *in_next = in;
-	const u8 *in_end = in_next + in_nbytes;
+	const u8* in_next = in;
+	const u8* in_end = in_next + in_nbytes;
 	struct deflate_output_bitstream os;
-	const u8 *in_cur_base = in_next;
+	const u8* in_cur_base = in_next;
 	unsigned max_len = DEFLATE_MAX_MATCH_LEN;
 	unsigned nice_len = MIN(c->nice_match_length, max_len);
-	u32 next_hashes[2] = {0, 0};
+	u32 next_hashes[2] = { 0, 0 };
 
 	deflate_init_output(&os, out, out_nbytes_avail);
 	hc_matchfinder_init(&c->p.g.hc_mf);
@@ -1982,11 +1985,11 @@ deflate_compress_greedy(struct libdeflate_compressor * restrict c,
 	do {
 		/* Starting a new DEFLATE block.  */
 
-		const u8 * const in_block_begin = in_next;
-		const u8 * const in_max_block_end =
+		const u8* const in_block_begin = in_next;
+		const u8* const in_max_block_end =
 			in_next + MIN(in_end - in_next, SOFT_MAX_BLOCK_LENGTH);
 		u32 litrunlen = 0;
-		struct deflate_sequence *next_seq = c->p.g.sequences;
+		struct deflate_sequence* next_seq = c->p.g.sequences;
 
 		init_block_split_stats(&c->split_stats);
 		deflate_reset_symbol_frequencies(c);
@@ -2003,27 +2006,28 @@ deflate_compress_greedy(struct libdeflate_compressor * restrict c,
 			}
 
 			length = hc_matchfinder_longest_match(&c->p.g.hc_mf,
-							      &in_cur_base,
-							      in_next,
-							      DEFLATE_MIN_MATCH_LEN - 1,
-							      max_len,
-							      nice_len,
-							      c->max_search_depth,
-							      next_hashes,
-							      &offset);
+				&in_cur_base,
+				in_next,
+				DEFLATE_MIN_MATCH_LEN - 1,
+				max_len,
+				nice_len,
+				c->max_search_depth,
+				next_hashes,
+				&offset);
 
 			if (length >= DEFLATE_MIN_MATCH_LEN) {
 				/* Match found.  */
 				deflate_choose_match(c, length, offset,
-						     &litrunlen, &next_seq);
+					&litrunlen, &next_seq);
 				observe_match(&c->split_stats, length);
 				in_next = hc_matchfinder_skip_positions(&c->p.g.hc_mf,
-									&in_cur_base,
-									in_next + 1,
-									in_end,
-									length - 1,
-									next_hashes);
-			} else {
+					&in_cur_base,
+					in_next + 1,
+					in_end,
+					length - 1,
+					next_hashes);
+			}
+			else {
 				/* No match found.  */
 				deflate_choose_literal(c, *in_next, &litrunlen);
 				observe_literal(&c->split_stats, *in_next);
@@ -2032,12 +2036,12 @@ deflate_compress_greedy(struct libdeflate_compressor * restrict c,
 
 			/* Check if it's time to output another block.  */
 		} while (in_next < in_max_block_end &&
-			 !should_end_block(&c->split_stats, in_block_begin, in_next, in_end));
+			!should_end_block(&c->split_stats, in_block_begin, in_next, in_end));
 
 		deflate_finish_sequence(next_seq, litrunlen);
 		deflate_flush_block(c, &os, in_block_begin,
-				    in_next - in_block_begin,
-				    in_next == in_end, false);
+			in_next - in_block_begin,
+			in_next == in_end, false);
 	} while (in_next != in_end);
 
 	return deflate_flush_output(&os);
@@ -2049,17 +2053,17 @@ deflate_compress_greedy(struct libdeflate_compressor * restrict c,
  * literal and continues to the next position.  If no, it outputs the match.
  */
 static size_t
-deflate_compress_lazy(struct libdeflate_compressor * restrict c,
-		      const u8 * restrict in, size_t in_nbytes,
-		      u8 * restrict out, size_t out_nbytes_avail)
+deflate_compress_lazy(struct libdeflate_compressor* restrict c,
+	const u8* restrict in, size_t in_nbytes,
+	u8* restrict out, size_t out_nbytes_avail)
 {
-	const u8 *in_next = in;
-	const u8 *in_end = in_next + in_nbytes;
+	const u8* in_next = in;
+	const u8* in_end = in_next + in_nbytes;
 	struct deflate_output_bitstream os;
-	const u8 *in_cur_base = in_next;
+	const u8* in_cur_base = in_next;
 	unsigned max_len = DEFLATE_MAX_MATCH_LEN;
 	unsigned nice_len = MIN(c->nice_match_length, max_len);
-	u32 next_hashes[2] = {0, 0};
+	u32 next_hashes[2] = { 0, 0 };
 
 	deflate_init_output(&os, out, out_nbytes_avail);
 	hc_matchfinder_init(&c->p.g.hc_mf);
@@ -2067,11 +2071,11 @@ deflate_compress_lazy(struct libdeflate_compressor * restrict c,
 	do {
 		/* Starting a new DEFLATE block.  */
 
-		const u8 * const in_block_begin = in_next;
-		const u8 * const in_max_block_end =
+		const u8* const in_block_begin = in_next;
+		const u8* const in_max_block_end =
 			in_next + MIN(in_end - in_next, SOFT_MAX_BLOCK_LENGTH);
 		u32 litrunlen = 0;
-		struct deflate_sequence *next_seq = c->p.g.sequences;
+		struct deflate_sequence* next_seq = c->p.g.sequences;
 
 		init_block_split_stats(&c->split_stats);
 		deflate_reset_symbol_frequencies(c);
@@ -2089,14 +2093,14 @@ deflate_compress_lazy(struct libdeflate_compressor * restrict c,
 
 			/* Find the longest match at the current position.  */
 			cur_len = hc_matchfinder_longest_match(&c->p.g.hc_mf,
-							       &in_cur_base,
-							       in_next,
-							       DEFLATE_MIN_MATCH_LEN - 1,
-							       max_len,
-							       nice_len,
-							       c->max_search_depth,
-							       next_hashes,
-							       &cur_offset);
+				&in_cur_base,
+				in_next,
+				DEFLATE_MIN_MATCH_LEN - 1,
+				max_len,
+				nice_len,
+				c->max_search_depth,
+				next_hashes,
+				&cur_offset);
 			in_next += 1;
 
 			if (cur_len < DEFLATE_MIN_MATCH_LEN) {
@@ -2115,13 +2119,13 @@ deflate_compress_lazy(struct libdeflate_compressor * restrict c,
 			 * immediately.  */
 			if (cur_len >= nice_len) {
 				deflate_choose_match(c, cur_len, cur_offset,
-						     &litrunlen, &next_seq);
+					&litrunlen, &next_seq);
 				in_next = hc_matchfinder_skip_positions(&c->p.g.hc_mf,
-									&in_cur_base,
-									in_next,
-									in_end,
-									cur_len - 1,
-									next_hashes);
+					&in_cur_base,
+					in_next,
+					in_end,
+					cur_len - 1,
+					next_hashes);
 				continue;
 			}
 
@@ -2146,14 +2150,14 @@ deflate_compress_lazy(struct libdeflate_compressor * restrict c,
 				nice_len = MIN(nice_len, max_len);
 			}
 			next_len = hc_matchfinder_longest_match(&c->p.g.hc_mf,
-								&in_cur_base,
-								in_next,
-								cur_len,
-								max_len,
-								nice_len,
-								c->max_search_depth / 2,
-								next_hashes,
-								&next_offset);
+				&in_cur_base,
+				in_next,
+				cur_len,
+				max_len,
+				nice_len,
+				c->max_search_depth / 2,
+				next_hashes,
+				&next_offset);
 			in_next += 1;
 
 			if (next_len > cur_len) {
@@ -2169,62 +2173,513 @@ deflate_compress_lazy(struct libdeflate_compressor * restrict c,
 			/* No longer match at the next position.
 			 * Output the current match.  */
 			deflate_choose_match(c, cur_len, cur_offset,
-					     &litrunlen, &next_seq);
+				&litrunlen, &next_seq);
 			in_next = hc_matchfinder_skip_positions(&c->p.g.hc_mf,
-								&in_cur_base,
-								in_next,
-								in_end,
-								cur_len - 2,
-								next_hashes);
+				&in_cur_base,
+				in_next,
+				in_end,
+				cur_len - 2,
+				next_hashes);
 
 			/* Check if it's time to output another block.  */
 		} while (in_next < in_max_block_end &&
-			 !should_end_block(&c->split_stats, in_block_begin, in_next, in_end));
+			!should_end_block(&c->split_stats, in_block_begin, in_next, in_end));
 
 		deflate_finish_sequence(next_seq, litrunlen);
 		deflate_flush_block(c, &os, in_block_begin,
-				    in_next - in_block_begin,
-				    in_next == in_end, false);
+			in_next - in_block_begin,
+			in_next == in_end, false);
 	} while (in_next != in_end);
 
 	return deflate_flush_output(&os);
 }
 
+#if SUPPORT_NEAR_OPTIMAL_PARSING
+
+/*
+ * Follow the minimum-cost path in the graph of possible match/literal choices
+ * for the current block and compute the frequencies of the Huffman symbols that
+ * would be needed to output those matches and literals.
+ */
+static void
+deflate_tally_item_list(struct libdeflate_compressor* c, u32 block_length)
+{
+	struct deflate_optimum_node* cur_node = &c->p.n.optimum_nodes[0];
+	struct deflate_optimum_node* end_node = &c->p.n.optimum_nodes[block_length];
+	do {
+		unsigned length = cur_node->item & OPTIMUM_LEN_MASK;
+		unsigned offset = cur_node->item >> OPTIMUM_OFFSET_SHIFT;
+
+		if (length == 1) {
+			/* Literal  */
+			c->freqs.litlen[offset]++;
+		}
+		else {
+			/* Match  */
+			c->freqs.litlen[257 + deflate_length_slot[length]]++;
+			c->freqs.offset[deflate_get_offset_slot(c, offset)]++;
+		}
+		cur_node += length;
+	} while (cur_node != end_node);
+}
+
+/* Set the current cost model from the codeword lengths specified in @lens.  */
+static void
+deflate_set_costs_from_codes(struct libdeflate_compressor* c,
+	const struct deflate_lens* lens)
+{
+	unsigned i;
+
+	/* Literals  */
+	for (i = 0; i < DEFLATE_NUM_LITERALS; i++) {
+		u32 bits = (lens->litlen[i] ? lens->litlen[i] : LITERAL_NOSTAT_BITS);
+		c->p.n.costs.literal[i] = bits << COST_SHIFT;
+	}
+
+	/* Lengths  */
+	for (i = DEFLATE_MIN_MATCH_LEN; i <= DEFLATE_MAX_MATCH_LEN; i++) {
+		unsigned length_slot = deflate_length_slot[i];
+		unsigned litlen_sym = 257 + length_slot;
+		u32 bits = (lens->litlen[litlen_sym] ? lens->litlen[litlen_sym] : LENGTH_NOSTAT_BITS);
+		bits += deflate_extra_length_bits[length_slot];
+		c->p.n.costs.length[i] = bits << COST_SHIFT;
+	}
+
+	/* Offset slots  */
+	for (i = 0; i < ARRAY_LEN(deflate_offset_slot_base); i++) {
+		u32 bits = (lens->offset[i] ? lens->offset[i] : OFFSET_NOSTAT_BITS);
+		bits += deflate_extra_offset_bits[i];
+		c->p.n.costs.offset_slot[i] = bits << COST_SHIFT;
+	}
+}
+
+static forceinline u32
+deflate_default_literal_cost(unsigned literal)
+{
+	STATIC_ASSERT(COST_SHIFT == 3);
+	/* 66 is 8.25 bits/symbol  */
+	return 66;
+}
+
+static forceinline u32
+deflate_default_length_slot_cost(unsigned length_slot)
+{
+	STATIC_ASSERT(COST_SHIFT == 3);
+	/* 60 is 7.5 bits/symbol  */
+	return 60 + ((u32)deflate_extra_length_bits[length_slot] << COST_SHIFT);
+}
+
+static forceinline u32
+deflate_default_offset_slot_cost(unsigned offset_slot)
+{
+	STATIC_ASSERT(COST_SHIFT == 3);
+	/* 39 is 4.875 bits/symbol  */
+	return 39 + ((u32)deflate_extra_offset_bits[offset_slot] << COST_SHIFT);
+}
+
+/*
+ * Set default symbol costs for the first block's first optimization pass.
+ *
+ * It works well to assume that each symbol is equally probable.  This results
+ * in each symbol being assigned a cost of (-log2(1.0/num_syms) * (1 <<
+ * COST_SHIFT)) where 'num_syms' is the number of symbols in the corresponding
+ * alphabet.  However, we intentionally bias the parse towards matches rather
+ * than literals by using a slightly lower default cost for length symbols than
+ * for literals.  This often improves the compression ratio slightly.
+ */
+static void
+deflate_set_default_costs(struct libdeflate_compressor* c)
+{
+	unsigned i;
+
+	/* Literals  */
+	for (i = 0; i < DEFLATE_NUM_LITERALS; i++)
+		c->p.n.costs.literal[i] = deflate_default_literal_cost(i);
+
+	/* Lengths  */
+	for (i = DEFLATE_MIN_MATCH_LEN; i <= DEFLATE_MAX_MATCH_LEN; i++)
+		c->p.n.costs.length[i] = deflate_default_length_slot_cost(
+			deflate_length_slot[i]);
+
+	/* Offset slots  */
+	for (i = 0; i < ARRAY_LEN(deflate_offset_slot_base); i++)
+		c->p.n.costs.offset_slot[i] = deflate_default_offset_slot_cost(i);
+}
+
+static forceinline void
+deflate_adjust_cost(u32* cost_p, u32 default_cost)
+{
+	*cost_p += ((s32)default_cost - (s32)*cost_p) >> 1;
+}
+
+/*
+ * Adjust the costs when beginning a new block.
+ *
+ * Since the current costs have been optimized for the data, it's undesirable to
+ * throw them away and start over with the default costs.  At the same time, we
+ * don't want to bias the parse by assuming that the next block will be similar
+ * to the current block.  As a compromise, make the costs closer to the
+ * defaults, but don't simply set them to the defaults.
+ */
+static void
+deflate_adjust_costs(struct libdeflate_compressor* c)
+{
+	unsigned i;
+
+	/* Literals  */
+	for (i = 0; i < DEFLATE_NUM_LITERALS; i++)
+		deflate_adjust_cost(&c->p.n.costs.literal[i],
+			deflate_default_literal_cost(i));
+
+	/* Lengths  */
+	for (i = DEFLATE_MIN_MATCH_LEN; i <= DEFLATE_MAX_MATCH_LEN; i++)
+		deflate_adjust_cost(&c->p.n.costs.length[i],
+			deflate_default_length_slot_cost(
+				deflate_length_slot[i]));
+
+	/* Offset slots  */
+	for (i = 0; i < ARRAY_LEN(deflate_offset_slot_base); i++)
+		deflate_adjust_cost(&c->p.n.costs.offset_slot[i],
+			deflate_default_offset_slot_cost(i));
+}
+
+/*
+ * Find the minimum-cost path through the graph of possible match/literal
+ * choices for this block.
+ *
+ * We find the minimum cost path from 'c->p.n.optimum_nodes[0]', which
+ * represents the node at the beginning of the block, to
+ * 'c->p.n.optimum_nodes[block_length]', which represents the node at the end of
+ * the block.  Edge costs are evaluated using the cost model 'c->p.n.costs'.
+ *
+ * The algorithm works backwards, starting at the end node and proceeding
+ * backwards one node at a time.  At each node, the minimum cost to reach the
+ * end node is computed and the match/literal choice that begins that path is
+ * saved.
+ */
+static void
+deflate_find_min_cost_path(struct libdeflate_compressor* c,
+	const u32 block_length,
+	const struct lz_match* cache_ptr)
+{
+	struct deflate_optimum_node* end_node = &c->p.n.optimum_nodes[block_length];
+	struct deflate_optimum_node* cur_node = end_node;
+
+	cur_node->cost_to_end = 0;
+	do {
+		unsigned num_matches;
+		unsigned literal;
+		u32 best_cost_to_end;
+
+		cur_node--;
+		cache_ptr--;
+
+		num_matches = cache_ptr->length;
+		literal = cache_ptr->offset;
+
+		/* It's always possible to choose a literal.  */
+		best_cost_to_end = c->p.n.costs.literal[literal] +
+			(cur_node + 1)->cost_to_end;
+		cur_node->item = ((u32)literal << OPTIMUM_OFFSET_SHIFT) | 1;
+
+		/* Also consider matches if there are any.  */
+		if (num_matches) {
+			const struct lz_match* match;
+			unsigned len;
+			unsigned offset;
+			unsigned offset_slot;
+			u32 offset_cost;
+			u32 cost_to_end;
+
+			/*
+			 * Consider each length from the minimum
+			 * (DEFLATE_MIN_MATCH_LEN) to the length of the longest
+			 * match found at this position.  For each length, we
+			 * consider only the smallest offset for which that
+			 * length is available.  Although this is not guaranteed
+			 * to be optimal due to the possibility of a larger
+			 * offset costing less than a smaller offset to code,
+			 * this is a very useful heuristic.
+			 */
+			match = cache_ptr - num_matches;
+			len = DEFLATE_MIN_MATCH_LEN;
+			do {
+				offset = match->offset;
+				offset_slot = deflate_get_offset_slot(c, offset);
+				offset_cost = c->p.n.costs.offset_slot[offset_slot];
+				do {
+					cost_to_end = offset_cost +
+						c->p.n.costs.length[len] +
+						(cur_node + len)->cost_to_end;
+					if (cost_to_end < best_cost_to_end) {
+						best_cost_to_end = cost_to_end;
+						cur_node->item = ((u32)offset << OPTIMUM_OFFSET_SHIFT) | len;
+					}
+				} while (++len <= match->length);
+			} while (++match != cache_ptr);
+			cache_ptr -= num_matches;
+		}
+		cur_node->cost_to_end = best_cost_to_end;
+	} while (cur_node != &c->p.n.optimum_nodes[0]);
+}
+
+/*
+ * Choose the literal/match sequence to use for the current block.  The basic
+ * algorithm finds a minimum-cost path through the block's graph of
+ * literal/match choices, given a cost model.  However, the cost of each symbol
+ * is unknown until the Huffman codes have been built, but at the same time the
+ * Huffman codes depend on the frequencies of chosen symbols.  Consequently,
+ * multiple passes must be used to try to approximate an optimal solution.  The
+ * first pass uses default costs, mixed with the costs from the previous block
+ * if any.  Later passes use the Huffman codeword lengths from the previous pass
+ * as the costs.
+ */
+static void
+deflate_optimize_block(struct libdeflate_compressor* c, u32 block_length,
+	const struct lz_match* cache_ptr, bool is_first_block)
+{
+	unsigned num_passes_remaining = c->p.n.num_optim_passes;
+	u32 i;
+
+	/* Force the block to really end at the desired length, even if some
+	 * matches extend beyond it. */
+	for (i = block_length; i <= MIN(block_length - 1 + DEFLATE_MAX_MATCH_LEN,
+		ARRAY_LEN(c->p.n.optimum_nodes) - 1); i++)
+		c->p.n.optimum_nodes[i].cost_to_end = 0x80000000;
+
+	/* Set the initial costs. */
+	if (is_first_block)
+		deflate_set_default_costs(c);
+	else
+		deflate_adjust_costs(c);
+
+	for (;;) {
+		/* Find the minimum cost path for this pass. */
+		deflate_find_min_cost_path(c, block_length, cache_ptr);
+
+		/* Compute frequencies of the chosen symbols. */
+		deflate_reset_symbol_frequencies(c);
+		deflate_tally_item_list(c, block_length);
+
+		if (--num_passes_remaining == 0)
+			break;
+
+		/* At least one optimization pass remains; update the costs. */
+		deflate_make_huffman_codes(&c->freqs, &c->codes);
+		deflate_set_costs_from_codes(c, &c->codes.lens);
+	}
+}
+
+/*
+ * This is the "near-optimal" DEFLATE compressor.  It computes the optimal
+ * representation of each DEFLATE block using a minimum-cost path search over
+ * the graph of possible match/literal choices for that block, assuming a
+ * certain cost for each Huffman symbol.
+ *
+ * For several reasons, the end result is not guaranteed to be optimal:
+ *
+ * - Nonoptimal choice of blocks
+ * - Heuristic limitations on which matches are actually considered
+ * - Symbol costs are unknown until the symbols have already been chosen
+ *   (so iterative optimization must be used)
+ */
+static size_t
+deflate_compress_near_optimal(struct libdeflate_compressor* restrict c,
+	const u8* restrict in, size_t in_nbytes,
+	u8* restrict out, size_t out_nbytes_avail)
+{
+	const u8* in_next = in;
+	const u8* in_end = in_next + in_nbytes;
+	struct deflate_output_bitstream os;
+	const u8* in_cur_base = in_next;
+	const u8* in_next_slide = in_next + MIN(in_end - in_next, MATCHFINDER_WINDOW_SIZE);
+	unsigned max_len = DEFLATE_MAX_MATCH_LEN;
+	unsigned nice_len = MIN(c->nice_match_length, max_len);
+	u32 next_hashes[2] = { 0, 0 };
+
+	deflate_init_output(&os, out, out_nbytes_avail);
+	bt_matchfinder_init(&c->p.n.bt_mf);
+
+	do {
+		/* Starting a new DEFLATE block.  */
+
+		struct lz_match* cache_ptr = c->p.n.match_cache;
+		const u8* const in_block_begin = in_next;
+		const u8* const in_max_block_end =
+			in_next + MIN(in_end - in_next, SOFT_MAX_BLOCK_LENGTH);
+		const u8* next_observation = in_next;
+
+		init_block_split_stats(&c->split_stats);
+
+		/*
+		 * Find matches until we decide to end the block.  We end the
+		 * block if any of the following is true:
+		 *
+		 * (1) Maximum block length has been reached
+		 * (2) Match catch may overflow.
+		 * (3) Block split heuristic says to split now.
+		 */
+		do {
+			struct lz_match* matches;
+			unsigned best_len;
+
+			/* Slide the window forward if needed.  */
+			if (in_next == in_next_slide) {
+				bt_matchfinder_slide_window(&c->p.n.bt_mf);
+				in_cur_base = in_next;
+				in_next_slide = in_next + MIN(in_end - in_next,
+					MATCHFINDER_WINDOW_SIZE);
+			}
+
+			/* Decrease the maximum and nice match lengths if we're
+			 * approaching the end of the input buffer.  */
+			if (unlikely(max_len > in_end - in_next)) {
+				max_len = in_end - in_next;
+				nice_len = MIN(nice_len, max_len);
+			}
+
+			/*
+			 * Find matches with the current position using the
+			 * binary tree matchfinder and save them in
+			 * 'match_cache'.
+			 *
+			 * Note: the binary tree matchfinder is more suited for
+			 * optimal parsing than the hash chain matchfinder.  The
+			 * reasons for this include:
+			 *
+			 * - The binary tree matchfinder can find more matches
+			 *   in the same number of steps.
+			 * - One of the major advantages of hash chains is that
+			 *   skipping positions (not searching for matches at
+			 *   them) is faster; however, with optimal parsing we
+			 *   search for matches at almost all positions, so this
+			 *   advantage of hash chains is negated.
+			 */
+			matches = cache_ptr;
+			best_len = 0;
+			if (likely(max_len >= BT_MATCHFINDER_REQUIRED_NBYTES)) {
+				cache_ptr = bt_matchfinder_get_matches(&c->p.n.bt_mf,
+					in_cur_base,
+					in_next - in_cur_base,
+					max_len,
+					nice_len,
+					c->max_search_depth,
+					next_hashes,
+					&best_len,
+					matches);
+			}
+
+			if (in_next >= next_observation) {
+				if (best_len >= 4) {
+					observe_match(&c->split_stats, best_len);
+					next_observation = in_next + best_len;
+				}
+				else {
+					observe_literal(&c->split_stats, *in_next);
+					next_observation = in_next + 1;
+				}
+			}
+
+			cache_ptr->length = cache_ptr - matches;
+			cache_ptr->offset = *in_next;
+			in_next++;
+			cache_ptr++;
+
+			/*
+			 * If there was a very long match found, don't cache any
+			 * matches for the bytes covered by that match.  This
+			 * avoids degenerate behavior when compressing highly
+			 * redundant data, where the number of matches can be
+			 * very large.
+			 *
+			 * This heuristic doesn't actually hurt the compression
+			 * ratio very much.  If there's a long match, then the
+			 * data must be highly compressible, so it doesn't
+			 * matter much what we do.
+			 */
+			if (best_len >= DEFLATE_MIN_MATCH_LEN && best_len >= nice_len) {
+				--best_len;
+				do {
+					if (in_next == in_next_slide) {
+						bt_matchfinder_slide_window(&c->p.n.bt_mf);
+						in_cur_base = in_next;
+						in_next_slide = in_next + MIN(in_end - in_next,
+							MATCHFINDER_WINDOW_SIZE);
+					}
+					if (unlikely(max_len > in_end - in_next)) {
+						max_len = in_end - in_next;
+						nice_len = MIN(nice_len, max_len);
+					}
+					if (max_len >= BT_MATCHFINDER_REQUIRED_NBYTES) {
+						bt_matchfinder_skip_position(&c->p.n.bt_mf,
+							in_cur_base,
+							in_next - in_cur_base,
+							nice_len,
+							c->max_search_depth,
+							next_hashes);
+					}
+					cache_ptr->length = 0;
+					cache_ptr->offset = *in_next;
+					in_next++;
+					cache_ptr++;
+				} while (--best_len);
+			}
+		} while (in_next < in_max_block_end &&
+			cache_ptr < &c->p.n.match_cache[CACHE_LENGTH] &&
+			!should_end_block(&c->split_stats, in_block_begin, in_next, in_end));
+
+		/* All the matches for this block have been cached.  Now choose
+		 * the sequence of items to output and flush the block.  */
+		deflate_optimize_block(c, in_next - in_block_begin, cache_ptr,
+			in_block_begin == in);
+		deflate_flush_block(c, &os, in_block_begin, in_next - in_block_begin,
+			in_next == in_end, true);
+	} while (in_next != in_end);
+
+	return deflate_flush_output(&os);
+}
+
+#endif /* SUPPORT_NEAR_OPTIMAL_PARSING */
+
 /* Initialize c->offset_slot_fast.  */
 static void
-deflate_init_offset_slot_fast(struct libdeflate_compressor *c)
+deflate_init_offset_slot_fast(struct libdeflate_compressor* c)
 {
+	unsigned offset_slot;
 	unsigned offset;
 	unsigned offset_end;
 
-	for (unsigned offset_slot = 0; offset_slot < ARRAY_LEN(deflate_offset_slot_base); offset_slot++)
+	for (offset_slot = 0;
+		offset_slot < ARRAY_LEN(deflate_offset_slot_base);
+		offset_slot++)
 	{
 		offset = deflate_offset_slot_base[offset_slot];
-	#if USE_FULL_OFFSET_SLOT_FAST
+#if USE_FULL_OFFSET_SLOT_FAST
 		offset_end = offset + (1 << deflate_extra_offset_bits[offset_slot]);
 		do {
 			c->offset_slot_fast[offset] = offset_slot;
 		} while (++offset != offset_end);
-	#else
+#else
 		if (offset <= 256) {
 			offset_end = offset + (1 << deflate_extra_offset_bits[offset_slot]);
 			do {
 				c->offset_slot_fast[offset - 1] = offset_slot;
 			} while (++offset != offset_end);
-		} else {
+		}
+		else {
 			offset_end = offset + (1 << deflate_extra_offset_bits[offset_slot]);
 			do {
 				c->offset_slot_fast[256 + ((offset - 1) >> 7)] = offset_slot;
 			} while ((offset += (1 << 7)) != offset_end);
 		}
-	#endif
+#endif
 	}
 }
 
-LIBDEFLATEEXPORT struct libdeflate_compressor * LIBDEFLATEAPI
+LIBDEFLATEEXPORT struct libdeflate_compressor* LIBDEFLATEAPI
 libdeflate_alloc_compressor(int compression_level)
 {
-	struct libdeflate_compressor *c;
+	struct libdeflate_compressor* c;
 	size_t size;
 
 #if SUPPORT_NEAR_OPTIMAL_PARSING
@@ -2234,7 +2689,7 @@ libdeflate_alloc_compressor(int compression_level)
 #endif
 		size = offsetof(struct libdeflate_compressor, p) + sizeof(c->p.g);
 
-	c = aligned_malloc(MATCHFINDER_ALIGNMENT, size);
+	c = libdeflate_aligned_malloc(MATCHFINDER_ALIGNMENT, size);
 	if (!c)
 		return NULL;
 
@@ -2318,7 +2773,7 @@ libdeflate_alloc_compressor(int compression_level)
 		break;
 #endif
 	default:
-		aligned_free(c);
+		libdeflate_aligned_free(c);
 		return NULL;
 	}
 
@@ -2331,9 +2786,9 @@ libdeflate_alloc_compressor(int compression_level)
 }
 
 LIBDEFLATEEXPORT size_t LIBDEFLATEAPI
-libdeflate_deflate_compress(struct libdeflate_compressor *c,
-			    const void *in, size_t in_nbytes,
-			    void *out, size_t out_nbytes_avail)
+libdeflate_deflate_compress(struct libdeflate_compressor* c,
+	const void* in, size_t in_nbytes,
+	void* out, size_t out_nbytes_avail)
 {
 	if (unlikely(out_nbytes_avail < OUTPUT_END_PADDING))
 		return 0;
@@ -2348,24 +2803,24 @@ libdeflate_deflate_compress(struct libdeflate_compressor *c,
 		return deflate_flush_output(&os);
 	}
 
-	return (*(c->impl))(c, in, in_nbytes, out, out_nbytes_avail);
+	return (*c->impl)(c, in, in_nbytes, out, out_nbytes_avail);
 }
 
 LIBDEFLATEEXPORT void LIBDEFLATEAPI
-libdeflate_free_compressor(struct libdeflate_compressor *c)
+libdeflate_free_compressor(struct libdeflate_compressor* c)
 {
-	aligned_free(c);
+	libdeflate_aligned_free(c);
 }
 
 unsigned int
-deflate_get_compression_level(struct libdeflate_compressor *c)
+deflate_get_compression_level(struct libdeflate_compressor* c)
 {
 	return c->compression_level;
 }
 
 LIBDEFLATEEXPORT size_t LIBDEFLATEAPI
-libdeflate_deflate_compress_bound(struct libdeflate_compressor *c,
-				  size_t in_nbytes)
+libdeflate_deflate_compress_bound(struct libdeflate_compressor* c,
+	size_t in_nbytes)
 {
 	/*
 	 * The worst case is all uncompressed blocks where one block has length
@@ -2375,52 +2830,4 @@ libdeflate_deflate_compress_bound(struct libdeflate_compressor *c,
 	 */
 	size_t max_num_blocks = MAX(DIV_ROUND_UP(in_nbytes, MIN_BLOCK_LENGTH), 1);
 	return (5 * max_num_blocks) + in_nbytes + 1 + OUTPUT_END_PADDING;
-}
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///for fast///
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-LIBDEFLATEEXPORT struct libdeflate_compressor* LIBDEFLATEAPI
-get_fast_compressor()
-{
-	struct libdeflate_compressor* c;
-	size_t size = offsetof(struct libdeflate_compressor, p) + sizeof(c->p.g);
-
-	c = aligned_malloc(MATCHFINDER_ALIGNMENT, size);
-	if (!c)
-		return NULL;
-
-	c->impl = deflate_compress_greedy;
-	c->max_search_depth = 2;
-	c->nice_match_length = 8;
-	
-	c->compression_level = 1;
-
-	deflate_init_offset_slot_fast(c);
-	deflate_init_static_codes(c);
-
-	return c;
-}
-
-#include <stdio.h>
-const int SIZE_ARR = 100000000;
-const int LEVEL = 1;
-
-int main()
-{
-	uint8_t* source = (uint8_t*)malloc(3 * SIZE_ARR),
-		* buffer = source + SIZE_ARR,
-		* uncompressed_buffer = buffer + SIZE_ARR;
-	for (int i = 0; i < SIZE_ARR; i++)
-		source[i] = i % 256 ? i : 1;
-
-	if (!source) return 1;
-	struct libdeflate_compressor* compr = libdeflate_alloc_compressor(LEVEL);
-	if (compr) {
-		int real_size = deflate_compress_greedy(compr, source, SIZE_ARR, buffer, SIZE_ARR);
-		printf("real size: %d\n", real_size);
-		libdeflate_free_compressor(compr);
-	}
-	free(source);
-	return 0;
 }

@@ -1,0 +1,7 @@
+﻿  functions.c
+C:\Users\user\source\repos\libdeflate_optimize\test\libdeflate2\lib\unaligned.h(84,31): warning C4244: return: преобразование "u64" в "machine_word_t", возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\test\libdeflate2\lib\hc_matchfinder.h(212,44): warning C4244: =: преобразование "unsigned long" в "mf_pos_t", возможна потеря данных
+C:\Users\user\source\repos\libdeflate_optimize\test\libdeflate2\lib\hc_matchfinder.h(375,6): warning C4018: >: несоответствие типов со знаком и без знака
+C:\Users\user\source\repos\libdeflate_optimize\test\functions.c(104,1): warning C4026: функция объявлена со списком формальных параметров
+C:\Users\user\source\repos\libdeflate_optimize\test\functions.c(52): warning C4716: my_fun: должна возвращать значение
+  test.vcxproj -> C:\Users\user\source\repos\libdeflate_optimize\Debug\test.exe
