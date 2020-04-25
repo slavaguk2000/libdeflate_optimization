@@ -7994,8 +7994,7 @@ _TEXT	ENDS
 ; File C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\hc_matchfinder.h
 ;	COMDAT _hc_matchfinder_skip_positions
 _TEXT	SEGMENT
-_remaining$ = -56					; size = 4
-_next_hashseq$ = -44					; size = 4
+_remaining$ = -44					; size = 4
 _hash4$ = -32						; size = 4
 _hash3$ = -20						; size = 4
 _cur_pos$ = -8						; size = 4
@@ -8011,14 +8010,14 @@ _hc_matchfinder_skip_positions PROC			; COMDAT
 
   00000	55		 push	 ebp
   00001	8b ec		 mov	 ebp, esp
-  00003	81 ec fc 00 00
-	00		 sub	 esp, 252		; 000000fcH
+  00003	81 ec f0 00 00
+	00		 sub	 esp, 240		; 000000f0H
   00009	53		 push	 ebx
   0000a	56		 push	 esi
   0000b	57		 push	 edi
-  0000c	8d bd 04 ff ff
-	ff		 lea	 edi, DWORD PTR [ebp-252]
-  00012	b9 3f 00 00 00	 mov	 ecx, 63			; 0000003fH
+  0000c	8d bd 10 ff ff
+	ff		 lea	 edi, DWORD PTR [ebp-240]
+  00012	b9 3c 00 00 00	 mov	 ecx, 60			; 0000003cH
   00017	b8 cc cc cc cc	 mov	 eax, -858993460		; ccccccccH
   0001c	f3 ab		 rep stosd
   0001e	b9 00 00 00 00	 mov	 ecx, OFFSET __779A6228_hc_matchfinder@h
@@ -8026,11 +8025,11 @@ _hc_matchfinder_skip_positions PROC			; COMDAT
 
 ; 389  : 	u32 cur_pos;
 ; 390  : 	u32 hash3, hash4;
-; 391  : 	u32 next_hashseq;
+; 391  : 	
 ; 392  : 	u32 remaining = count;
 
   00028	8b 45 18	 mov	 eax, DWORD PTR _count$[ebp]
-  0002b	89 45 c8	 mov	 DWORD PTR _remaining$[ebp], eax
+  0002b	89 45 d4	 mov	 DWORD PTR _remaining$[ebp], eax
 
 ; 393  : 
 ; 394  : 	if (unlikely(count + 5 > in_end - in_next))
@@ -8046,7 +8045,7 @@ _hc_matchfinder_skip_positions PROC			; COMDAT
 
   0003e	8b 45 10	 mov	 eax, DWORD PTR _in_next$[ebp]
   00041	03 45 18	 add	 eax, DWORD PTR _count$[ebp]
-  00044	e9 11 01 00 00	 jmp	 $LN1@hc_matchfi
+  00044	e9 07 01 00 00	 jmp	 $LN1@hc_matchfi
 $LN5@hc_matchfi:
 
 ; 396  : 
@@ -8131,86 +8130,93 @@ $LN6@hc_matchfi:
 	00 01 00	 mov	 WORD PTR [ecx+eax*2+65536], dx
 
 ; 409  : 
-; 410  : 		next_hashseq = get_unaligned_le32(++in_next);
+; 410  : 		//
+; 411  : 
+; 412  : 		/*u32 next_hashseq;
+; 413  : 		next_hashseq = get_unaligned_le32(++in_next);
+; 414  : 		hash3 = lz_hash(next_hashseq & 0xFFFFFF, HC_MATCHFINDER_HASH3_ORDER);
+; 415  : 		hash4 = lz_hash(next_hashseq, HC_MATCHFINDER_HASH4_ORDER);
+; 416  : 		*/
+; 417  : 		//OPTIMIZE
+; 418  : 		
+; 419  : 		hash3 = lz_hash(*((u32*)(++in_next)) & 0xFFFFFF, HC_MATCHFINDER_HASH3_ORDER);
 
   000de	8b 45 10	 mov	 eax, DWORD PTR _in_next$[ebp]
   000e1	83 c0 01	 add	 eax, 1
   000e4	89 45 10	 mov	 DWORD PTR _in_next$[ebp], eax
-  000e7	8b 4d 10	 mov	 ecx, DWORD PTR _in_next$[ebp]
-  000ea	51		 push	 ecx
-  000eb	e8 00 00 00 00	 call	 _get_unaligned_le32
-  000f0	83 c4 04	 add	 esp, 4
-  000f3	89 45 d4	 mov	 DWORD PTR _next_hashseq$[ebp], eax
+  000e7	6a 0f		 push	 15			; 0000000fH
+  000e9	8b 4d 10	 mov	 ecx, DWORD PTR _in_next$[ebp]
+  000ec	8b 11		 mov	 edx, DWORD PTR [ecx]
+  000ee	81 e2 ff ff ff
+	00		 and	 edx, 16777215		; 00ffffffH
+  000f4	52		 push	 edx
+  000f5	e8 00 00 00 00	 call	 _lz_hash
+  000fa	83 c4 08	 add	 esp, 8
+  000fd	89 45 ec	 mov	 DWORD PTR _hash3$[ebp], eax
 
-; 411  : 		hash3 = lz_hash(next_hashseq & 0xFFFFFF, HC_MATCHFINDER_HASH3_ORDER);
+; 420  : 		hash4 = lz_hash(*((u32*)(in_next)), HC_MATCHFINDER_HASH4_ORDER);
 
-  000f6	6a 0f		 push	 15			; 0000000fH
-  000f8	8b 45 d4	 mov	 eax, DWORD PTR _next_hashseq$[ebp]
-  000fb	25 ff ff ff 00	 and	 eax, 16777215		; 00ffffffH
-  00100	50		 push	 eax
-  00101	e8 00 00 00 00	 call	 _lz_hash
-  00106	83 c4 08	 add	 esp, 8
-  00109	89 45 ec	 mov	 DWORD PTR _hash3$[ebp], eax
+  00100	6a 10		 push	 16			; 00000010H
+  00102	8b 45 10	 mov	 eax, DWORD PTR _in_next$[ebp]
+  00105	8b 08		 mov	 ecx, DWORD PTR [eax]
+  00107	51		 push	 ecx
+  00108	e8 00 00 00 00	 call	 _lz_hash
+  0010d	83 c4 08	 add	 esp, 8
+  00110	89 45 e0	 mov	 DWORD PTR _hash4$[ebp], eax
 
-; 412  : 		hash4 = lz_hash(next_hashseq, HC_MATCHFINDER_HASH4_ORDER);
+; 421  : 		
+; 422  : 		///
+; 423  : 		
+; 424  : 		cur_pos++;
 
-  0010c	6a 10		 push	 16			; 00000010H
-  0010e	8b 45 d4	 mov	 eax, DWORD PTR _next_hashseq$[ebp]
-  00111	50		 push	 eax
-  00112	e8 00 00 00 00	 call	 _lz_hash
-  00117	83 c4 08	 add	 esp, 8
-  0011a	89 45 e0	 mov	 DWORD PTR _hash4$[ebp], eax
+  00113	8b 45 f8	 mov	 eax, DWORD PTR _cur_pos$[ebp]
+  00116	83 c0 01	 add	 eax, 1
+  00119	89 45 f8	 mov	 DWORD PTR _cur_pos$[ebp], eax
 
-; 413  : 		cur_pos++;
+; 425  : 	} while (--remaining);
 
-  0011d	8b 45 f8	 mov	 eax, DWORD PTR _cur_pos$[ebp]
-  00120	83 c0 01	 add	 eax, 1
-  00123	89 45 f8	 mov	 DWORD PTR _cur_pos$[ebp], eax
-
-; 414  : 	} while (--remaining);
-
-  00126	8b 45 c8	 mov	 eax, DWORD PTR _remaining$[ebp]
-  00129	83 e8 01	 sub	 eax, 1
-  0012c	89 45 c8	 mov	 DWORD PTR _remaining$[ebp], eax
-  0012f	0f 85 41 ff ff
+  0011c	8b 45 d4	 mov	 eax, DWORD PTR _remaining$[ebp]
+  0011f	83 e8 01	 sub	 eax, 1
+  00122	89 45 d4	 mov	 DWORD PTR _remaining$[ebp], eax
+  00125	0f 85 4b ff ff
 	ff		 jne	 $LN4@hc_matchfi
 
-; 415  : 
-; 416  : 	prefetchw(&mf->hash3_tab[hash3]);
-; 417  : 	prefetchw(&mf->hash4_tab[hash4]);
-; 418  : 	next_hashes[0] = hash3;
+; 426  : 
+; 427  : 	prefetchw(&mf->hash3_tab[hash3]);
+; 428  : 	prefetchw(&mf->hash4_tab[hash4]);
+; 429  : 	next_hashes[0] = hash3;
 
-  00135	b8 04 00 00 00	 mov	 eax, 4
-  0013a	6b c8 00	 imul	 ecx, eax, 0
-  0013d	8b 55 1c	 mov	 edx, DWORD PTR _next_hashes$[ebp]
-  00140	8b 45 ec	 mov	 eax, DWORD PTR _hash3$[ebp]
-  00143	89 04 0a	 mov	 DWORD PTR [edx+ecx], eax
+  0012b	b8 04 00 00 00	 mov	 eax, 4
+  00130	6b c8 00	 imul	 ecx, eax, 0
+  00133	8b 55 1c	 mov	 edx, DWORD PTR _next_hashes$[ebp]
+  00136	8b 45 ec	 mov	 eax, DWORD PTR _hash3$[ebp]
+  00139	89 04 0a	 mov	 DWORD PTR [edx+ecx], eax
 
-; 419  : 	next_hashes[1] = hash4;
+; 430  : 	next_hashes[1] = hash4;
 
-  00146	b8 04 00 00 00	 mov	 eax, 4
-  0014b	c1 e0 00	 shl	 eax, 0
-  0014e	8b 4d 1c	 mov	 ecx, DWORD PTR _next_hashes$[ebp]
-  00151	8b 55 e0	 mov	 edx, DWORD PTR _hash4$[ebp]
-  00154	89 14 01	 mov	 DWORD PTR [ecx+eax], edx
+  0013c	b8 04 00 00 00	 mov	 eax, 4
+  00141	c1 e0 00	 shl	 eax, 0
+  00144	8b 4d 1c	 mov	 ecx, DWORD PTR _next_hashes$[ebp]
+  00147	8b 55 e0	 mov	 edx, DWORD PTR _hash4$[ebp]
+  0014a	89 14 01	 mov	 DWORD PTR [ecx+eax], edx
 
-; 420  : 	return in_next;
+; 431  : 	return in_next;
 
-  00157	8b 45 10	 mov	 eax, DWORD PTR _in_next$[ebp]
+  0014d	8b 45 10	 mov	 eax, DWORD PTR _in_next$[ebp]
 $LN1@hc_matchfi:
 
-; 421  : }//the most long function
+; 432  : }//the most long function
 
-  0015a	5f		 pop	 edi
-  0015b	5e		 pop	 esi
-  0015c	5b		 pop	 ebx
-  0015d	81 c4 fc 00 00
-	00		 add	 esp, 252		; 000000fcH
-  00163	3b ec		 cmp	 ebp, esp
-  00165	e8 00 00 00 00	 call	 __RTC_CheckEsp
-  0016a	8b e5		 mov	 esp, ebp
-  0016c	5d		 pop	 ebp
-  0016d	c3		 ret	 0
+  00150	5f		 pop	 edi
+  00151	5e		 pop	 esi
+  00152	5b		 pop	 ebx
+  00153	81 c4 f0 00 00
+	00		 add	 esp, 240		; 000000f0H
+  00159	3b ec		 cmp	 ebp, esp
+  0015b	e8 00 00 00 00	 call	 __RTC_CheckEsp
+  00160	8b e5		 mov	 esp, ebp
+  00162	5d		 pop	 ebp
+  00163	c3		 ret	 0
 _hc_matchfinder_skip_positions ENDP
 _TEXT	ENDS
 ; Function compile flags: /Odtp /RTCsu /ZI
@@ -8980,7 +8986,7 @@ _start_len$ = 16					; size = 4
 _max_len$ = 20						; size = 4
 _lz_extend PROC						; COMDAT
 
-; 125  : {
+; 132  : {
 
   00000	55		 push	 ebp
   00001	8b ec		 mov	 ebp, esp
@@ -8997,22 +9003,22 @@ _lz_extend PROC						; COMDAT
   0001e	b9 00 00 00 00	 mov	 ecx, OFFSET __09230FC3_matchfinder_common@h
   00023	e8 00 00 00 00	 call	 @__CheckForDebuggerJustMyCode@4
 
-; 126  : 	unsigned len = start_len;
+; 133  : 	unsigned len = start_len;
 
   00028	8b 45 10	 mov	 eax, DWORD PTR _start_len$[ebp]
   0002b	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 
-; 127  : 	machine_word_t v_word;
-; 128  : 
-; 129  : 	if (UNALIGNED_ACCESS_IS_FAST) {
+; 134  : 	machine_word_t v_word;
+; 135  : 
+; 136  : 	if (UNALIGNED_ACCESS_IS_FAST) {
 
   0002e	b8 01 00 00 00	 mov	 eax, 1
   00033	85 c0		 test	 eax, eax
   00035	0f 84 1f 01 00
 	00		 je	 $LN4@lz_extend
 
-; 130  : 
-; 131  : 		if (likely(max_len - len >= 4 * WORDBYTES)) {
+; 137  : 
+; 138  : 		if (likely(max_len - len >= 4 * WORDBYTES)) {
 
   0003b	8b 45 14	 mov	 eax, DWORD PTR _max_len$[ebp]
   0003e	2b 45 f8	 sub	 eax, DWORD PTR _len$[ebp]
@@ -9020,15 +9026,15 @@ _lz_extend PROC						; COMDAT
   00044	0f 82 d1 00 00
 	00		 jb	 $LN2@lz_extend
 
-; 132  : 
-; 133  : 		#define COMPARE_WORD_STEP				\
-; 134  : 			v_word = load_word_unaligned(&matchptr[len]) ^	\
-; 135  : 				 load_word_unaligned(&strptr[len]);	\
-; 136  : 			if (v_word != 0)				\
-; 137  : 				goto word_differs;			\
-; 138  : 			len += WORDBYTES;				\
 ; 139  : 
-; 140  : 			COMPARE_WORD_STEP
+; 140  : 		#define COMPARE_WORD_STEP				\
+; 141  : 			v_word = load_word_unaligned(&matchptr[len]) ^	\
+; 142  : 				 load_word_unaligned(&strptr[len]);	\
+; 143  : 			if (v_word != 0)				\
+; 144  : 				goto word_differs;			\
+; 145  : 			len += WORDBYTES;				\
+; 146  : 
+; 147  : 			COMPARE_WORD_STEP
 
   0004a	8b 45 0c	 mov	 eax, DWORD PTR _matchptr$[ebp]
   0004d	03 45 f8	 add	 eax, DWORD PTR _len$[ebp]
@@ -9050,7 +9056,7 @@ $LN8@lz_extend:
   00079	83 c0 04	 add	 eax, 4
   0007c	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 
-; 141  : 			COMPARE_WORD_STEP
+; 148  : 			COMPARE_WORD_STEP
 
   0007f	8b 45 0c	 mov	 eax, DWORD PTR _matchptr$[ebp]
   00082	03 45 f8	 add	 eax, DWORD PTR _len$[ebp]
@@ -9072,7 +9078,7 @@ $LN9@lz_extend:
   000ae	83 c0 04	 add	 eax, 4
   000b1	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 
-; 142  : 			COMPARE_WORD_STEP
+; 149  : 			COMPARE_WORD_STEP
 
   000b4	8b 45 0c	 mov	 eax, DWORD PTR _matchptr$[ebp]
   000b7	03 45 f8	 add	 eax, DWORD PTR _len$[ebp]
@@ -9094,7 +9100,7 @@ $LN10@lz_extend:
   000e3	83 c0 04	 add	 eax, 4
   000e6	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 
-; 143  : 			COMPARE_WORD_STEP
+; 150  : 			COMPARE_WORD_STEP
 
   000e9	8b 45 0c	 mov	 eax, DWORD PTR _matchptr$[ebp]
   000ec	03 45 f8	 add	 eax, DWORD PTR _len$[ebp]
@@ -9117,17 +9123,17 @@ $LN11@lz_extend:
   00118	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 $LN2@lz_extend:
 
-; 144  : 		#undef COMPARE_WORD_STEP
-; 145  : 		}
-; 146  : 
-; 147  : 		while (len + WORDBYTES <= max_len) {
+; 151  : 		#undef COMPARE_WORD_STEP
+; 152  : 		}
+; 153  : 
+; 154  : 		while (len + WORDBYTES <= max_len) {
 
   0011b	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
   0011e	83 c0 04	 add	 eax, 4
   00121	3b 45 14	 cmp	 eax, DWORD PTR _max_len$[ebp]
   00124	77 34		 ja	 SHORT $LN4@lz_extend
 
-; 148  : 			v_word = load_word_unaligned(&matchptr[len]) ^
+; 155  : 			v_word = load_word_unaligned(&matchptr[len]) ^
 
   00126	8b 45 0c	 mov	 eax, DWORD PTR _matchptr$[ebp]
   00129	03 45 f8	 add	 eax, DWORD PTR _len$[ebp]
@@ -9143,30 +9149,30 @@ $LN2@lz_extend:
   00146	33 f0		 xor	 esi, eax
   00148	89 75 ec	 mov	 DWORD PTR _v_word$[ebp], esi
 
-; 149  : 				 load_word_unaligned(&strptr[len]);
-; 150  : 			if (v_word != 0)
+; 156  : 				 load_word_unaligned(&strptr[len]);
+; 157  : 			if (v_word != 0)
 
   0014b	74 02		 je	 SHORT $LN12@lz_extend
 
-; 151  : 				goto word_differs;
+; 158  : 				goto word_differs;
 
   0014d	eb 39		 jmp	 SHORT $word_differs$16
 $LN12@lz_extend:
 
-; 152  : 			len += WORDBYTES;
+; 159  : 			len += WORDBYTES;
 
   0014f	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
   00152	83 c0 04	 add	 eax, 4
   00155	89 45 f8	 mov	 DWORD PTR _len$[ebp], eax
 
-; 153  : 		}
+; 160  : 		}
 
   00158	eb c1		 jmp	 SHORT $LN2@lz_extend
 $LN4@lz_extend:
 
-; 154  : 	}
-; 155  : 
-; 156  : 	while (len < max_len && matchptr[len] == strptr[len])
+; 161  : 	}
+; 162  : 
+; 163  : 	while (len < max_len && matchptr[len] == strptr[len])
 
   0015a	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
   0015d	3b 45 14	 cmp	 eax, DWORD PTR _max_len$[ebp]
@@ -9180,7 +9186,7 @@ $LN4@lz_extend:
   00174	3b c8		 cmp	 ecx, eax
   00176	75 0b		 jne	 SHORT $LN5@lz_extend
 
-; 157  : 		len++;
+; 164  : 		len++;
 
   00178	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
   0017b	83 c0 01	 add	 eax, 1
@@ -9188,21 +9194,21 @@ $LN4@lz_extend:
   00181	eb d7		 jmp	 SHORT $LN4@lz_extend
 $LN5@lz_extend:
 
-; 158  : 	return len;
+; 165  : 	return len;
 
   00183	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
   00186	eb 3f		 jmp	 SHORT $LN1@lz_extend
 $word_differs$16:
 
-; 159  : 
-; 160  : word_differs:
-; 161  : 	if (CPU_IS_LITTLE_ENDIAN())
+; 166  : 
+; 167  : word_differs:
+; 168  : 	if (CPU_IS_LITTLE_ENDIAN())
 
   00188	b8 01 00 00 00	 mov	 eax, 1
   0018d	85 c0		 test	 eax, eax
   0018f	74 17		 je	 SHORT $LN13@lz_extend
 
-; 162  : 		len += (bsfw(v_word) >> 3);
+; 169  : 		len += (bsfw(v_word) >> 3);
 
   00191	8b 45 ec	 mov	 eax, DWORD PTR _v_word$[ebp]
   00194	50		 push	 eax
@@ -9214,8 +9220,8 @@ $word_differs$16:
   001a6	eb 1c		 jmp	 SHORT $LN14@lz_extend
 $LN13@lz_extend:
 
-; 163  : 	else
-; 164  : 		len += (WORDBITS - 1 - bsrw(v_word)) >> 3;
+; 170  : 	else
+; 171  : 		len += (WORDBITS - 1 - bsrw(v_word)) >> 3;
 
   001a8	8b 45 ec	 mov	 eax, DWORD PTR _v_word$[ebp]
   001ab	50		 push	 eax
@@ -9228,12 +9234,12 @@ $LN13@lz_extend:
   001c1	89 4d f8	 mov	 DWORD PTR _len$[ebp], ecx
 $LN14@lz_extend:
 
-; 165  : 	return len;
+; 172  : 	return len;
 
   001c4	8b 45 f8	 mov	 eax, DWORD PTR _len$[ebp]
 $LN1@lz_extend:
 
-; 166  : }
+; 173  : }
 
   001c7	5f		 pop	 edi
   001c8	5e		 pop	 esi
@@ -9255,7 +9261,7 @@ _seq$ = 8						; size = 4
 _num_bits$ = 12						; size = 4
 _lz_hash PROC						; COMDAT
 
-; 114  : {
+; 121  : {
 
   00000	55		 push	 ebp
   00001	8b ec		 mov	 ebp, esp
@@ -9272,7 +9278,7 @@ _lz_hash PROC						; COMDAT
   0001e	b9 00 00 00 00	 mov	 ecx, OFFSET __09230FC3_matchfinder_common@h
   00023	e8 00 00 00 00	 call	 @__CheckForDebuggerJustMyCode@4
 
-; 115  : 	return (u32)(seq * 0x1E35A7BD) >> (32 - num_bits);
+; 122  : 	return (u32)(seq * 0x1E35A7BD) >> (32 - num_bits);
 
   00028	69 45 08 bd a7
 	35 1e		 imul	 eax, DWORD PTR _seq$[ebp], 506832829
@@ -9280,7 +9286,7 @@ _lz_hash PROC						; COMDAT
   00034	2b 4d 0c	 sub	 ecx, DWORD PTR _num_bits$[ebp]
   00037	d3 e8		 shr	 eax, cl
 
-; 116  : }
+; 123  : }
 
   00039	5f		 pop	 edi
   0003a	5e		 pop	 esi
@@ -9298,8 +9304,7 @@ _TEXT	ENDS
 ; File C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\libdeflate2\lib\matchfinder_common.h
 ;	COMDAT _matchfinder_rebase
 _TEXT	SEGMENT
-_sign_bit$1 = -32					; size = 2
-_v$2 = -20						; size = 2
+tv78 = -208						; size = 4
 _i$ = -8						; size = 4
 _data$ = 8						; size = 4
 _num_entries$ = 12					; size = 4
@@ -9309,14 +9314,14 @@ _matchfinder_rebase PROC				; COMDAT
 
   00000	55		 push	 ebp
   00001	8b ec		 mov	 ebp, esp
-  00003	81 ec e4 00 00
-	00		 sub	 esp, 228		; 000000e4H
+  00003	81 ec d0 00 00
+	00		 sub	 esp, 208		; 000000d0H
   00009	53		 push	 ebx
   0000a	56		 push	 esi
   0000b	57		 push	 edi
-  0000c	8d bd 1c ff ff
-	ff		 lea	 edi, DWORD PTR [ebp-228]
-  00012	b9 39 00 00 00	 mov	 ecx, 57			; 00000039H
+  0000c	8d bd 30 ff ff
+	ff		 lea	 edi, DWORD PTR [ebp-208]
+  00012	b9 34 00 00 00	 mov	 ecx, 52			; 00000034H
   00017	b8 cc cc cc cc	 mov	 eax, -858993460		; ccccccccH
   0001c	f3 ab		 rep stosd
   0001e	b9 00 00 00 00	 mov	 ecx, OFFSET __09230FC3_matchfinder_common@h
@@ -9331,7 +9336,7 @@ _matchfinder_rebase PROC				; COMDAT
 
 ; 80   : 		return;
 
-  0002c	e9 cc 00 00 00	 jmp	 $LN1@matchfinde
+  0002c	e9 bd 00 00 00	 jmp	 $LN1@matchfinde
 $LN8@matchfinde:
 
 ; 81   : 
@@ -9339,7 +9344,7 @@ $LN8@matchfinde:
 
   00031	b8 01 00 00 00	 mov	 eax, 1
   00036	85 c0		 test	 eax, eax
-  00038	74 6e		 je	 SHORT $LN9@matchfinde
+  00038	74 5f		 je	 SHORT $LN9@matchfinde
 
 ; 83   : 		/* Branchless version for 32768 byte windows.  If the value was
 ; 84   : 		 * already negative, clear all bits except the sign bit; this
@@ -9357,118 +9362,117 @@ $LN2@matchfinde:
 $LN4@matchfinde:
   0004c	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
   0004f	3b 45 0c	 cmp	 eax, DWORD PTR _num_entries$[ebp]
-  00052	73 52		 jae	 SHORT $LN3@matchfinde
+  00052	73 43		 jae	 SHORT $LN3@matchfinde
 
-; 88   : 			u16 v = data[i];
+; 88   : 			
+; 89   : 			///
+; 90   : 			//u16 v = data[i];
+; 91   : 			//u16 sign_bit = v & 0x8000;
+; 92   : 			//v &= sign_bit - ((sign_bit >> 15) ^ 1);
+; 93   : 			//v |= 0x8000;
+; 94   : 			//data[i] = v;
+; 95   : 			//////OPTIMIZE
+; 96   : 
+; 97   : 			data[i] = data[i] < 0 ? 0x8000 : data[i] | 0x8000;
 
   00054	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
   00057	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
-  0005a	66 8b 14 41	 mov	 dx, WORD PTR [ecx+eax*2]
-  0005e	66 89 55 ec	 mov	 WORD PTR _v$2[ebp], dx
+  0005a	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
+  0005e	85 d2		 test	 edx, edx
+  00060	7d 0c		 jge	 SHORT $LN13@matchfinde
+  00062	c7 85 30 ff ff
+	ff 00 80 00 00	 mov	 DWORD PTR tv78[ebp], 32768 ; 00008000H
+  0006c	eb 16		 jmp	 SHORT $LN14@matchfinde
+$LN13@matchfinde:
+  0006e	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  00071	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
+  00074	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
+  00078	81 ca 00 80 00
+	00		 or	 edx, 32768		; 00008000H
+  0007e	89 95 30 ff ff
+	ff		 mov	 DWORD PTR tv78[ebp], edx
+$LN14@matchfinde:
+  00084	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  00087	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
+  0008a	66 8b 95 30 ff
+	ff ff		 mov	 dx, WORD PTR tv78[ebp]
+  00091	66 89 14 41	 mov	 WORD PTR [ecx+eax*2], dx
 
-; 89   : 			u16 sign_bit = v & 0x8000;
+; 98   : 
+; 99   : 			///
+; 100  : 		}
 
-  00062	0f b7 45 ec	 movzx	 eax, WORD PTR _v$2[ebp]
-  00066	25 00 80 00 00	 and	 eax, 32768		; 00008000H
-  0006b	66 89 45 e0	 mov	 WORD PTR _sign_bit$1[ebp], ax
-
-; 90   : 			v &= sign_bit - ((sign_bit >> 15) ^ 1);
-
-  0006f	0f b7 45 e0	 movzx	 eax, WORD PTR _sign_bit$1[ebp]
-  00073	0f b7 4d e0	 movzx	 ecx, WORD PTR _sign_bit$1[ebp]
-  00077	c1 f9 0f	 sar	 ecx, 15			; 0000000fH
-  0007a	83 f1 01	 xor	 ecx, 1
-  0007d	2b c1		 sub	 eax, ecx
-  0007f	0f b7 55 ec	 movzx	 edx, WORD PTR _v$2[ebp]
-  00083	23 d0		 and	 edx, eax
-  00085	66 89 55 ec	 mov	 WORD PTR _v$2[ebp], dx
-
-; 91   : 			v |= 0x8000;
-
-  00089	0f b7 45 ec	 movzx	 eax, WORD PTR _v$2[ebp]
-  0008d	0d 00 80 00 00	 or	 eax, 32768		; 00008000H
-  00092	66 89 45 ec	 mov	 WORD PTR _v$2[ebp], ax
-
-; 92   : 			data[i] = v;
-
-  00096	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  00099	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
-  0009c	66 8b 55 ec	 mov	 dx, WORD PTR _v$2[ebp]
-  000a0	66 89 14 41	 mov	 WORD PTR [ecx+eax*2], dx
-
-; 93   : 		}
-
-  000a4	eb 9d		 jmp	 SHORT $LN2@matchfinde
+  00095	eb ac		 jmp	 SHORT $LN2@matchfinde
 $LN3@matchfinde:
 
-; 94   : 		return;
+; 101  : 		return;
 
-  000a6	eb 55		 jmp	 SHORT $LN1@matchfinde
+  00097	eb 55		 jmp	 SHORT $LN1@matchfinde
 $LN9@matchfinde:
 
-; 95   : 	}
-; 96   : 
-; 97   : 	for (i = 0; i < num_entries; i++) {
+; 102  : 	}
+; 103  : 
+; 104  : 	for (i = 0; i < num_entries; i++) {
 
-  000a8	c7 45 f8 00 00
+  00099	c7 45 f8 00 00
 	00 00		 mov	 DWORD PTR _i$[ebp], 0
-  000af	eb 09		 jmp	 SHORT $LN7@matchfinde
+  000a0	eb 09		 jmp	 SHORT $LN7@matchfinde
 $LN5@matchfinde:
-  000b1	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  000b4	83 c0 01	 add	 eax, 1
-  000b7	89 45 f8	 mov	 DWORD PTR _i$[ebp], eax
+  000a2	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  000a5	83 c0 01	 add	 eax, 1
+  000a8	89 45 f8	 mov	 DWORD PTR _i$[ebp], eax
 $LN7@matchfinde:
-  000ba	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  000bd	3b 45 0c	 cmp	 eax, DWORD PTR _num_entries$[ebp]
-  000c0	73 3b		 jae	 SHORT $LN1@matchfinde
+  000ab	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  000ae	3b 45 0c	 cmp	 eax, DWORD PTR _num_entries$[ebp]
+  000b1	73 3b		 jae	 SHORT $LN1@matchfinde
 
-; 98   : 		if (data[i] >= 0)
+; 105  : 		if (data[i] >= 0)
 
-  000c2	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  000c5	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
-  000c8	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
-  000cc	85 d2		 test	 edx, edx
-  000ce	7c 1c		 jl	 SHORT $LN10@matchfinde
+  000b3	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  000b6	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
+  000b9	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
+  000bd	85 d2		 test	 edx, edx
+  000bf	7c 1c		 jl	 SHORT $LN10@matchfinde
 
-; 99   : 			data[i] -= -((mf_pos_t)MATCHFINDER_WINDOW_SIZE);
+; 106  : 			data[i] -= -((mf_pos_t)MATCHFINDER_WINDOW_SIZE);
 
-  000d0	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  000d3	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
-  000d6	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
-  000da	81 ea 00 80 00
+  000c1	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  000c4	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
+  000c7	0f bf 14 41	 movsx	 edx, WORD PTR [ecx+eax*2]
+  000cb	81 ea 00 80 00
 	00		 sub	 edx, 32768		; 00008000H
-  000e0	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
-  000e3	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
-  000e6	66 89 14 41	 mov	 WORD PTR [ecx+eax*2], dx
-  000ea	eb 0f		 jmp	 SHORT $LN11@matchfinde
+  000d1	8b 45 f8	 mov	 eax, DWORD PTR _i$[ebp]
+  000d4	8b 4d 08	 mov	 ecx, DWORD PTR _data$[ebp]
+  000d7	66 89 14 41	 mov	 WORD PTR [ecx+eax*2], dx
+  000db	eb 0f		 jmp	 SHORT $LN11@matchfinde
 $LN10@matchfinde:
 
-; 100  : 		else
-; 101  : 			data[i] = -((mf_pos_t)MATCHFINDER_WINDOW_SIZE);
+; 107  : 		else
+; 108  : 			data[i] = -((mf_pos_t)MATCHFINDER_WINDOW_SIZE);
 
-  000ec	b8 00 80 ff ff	 mov	 eax, -32768		; ffff8000H
-  000f1	8b 4d f8	 mov	 ecx, DWORD PTR _i$[ebp]
-  000f4	8b 55 08	 mov	 edx, DWORD PTR _data$[ebp]
-  000f7	66 89 04 4a	 mov	 WORD PTR [edx+ecx*2], ax
+  000dd	b8 00 80 ff ff	 mov	 eax, -32768		; ffff8000H
+  000e2	8b 4d f8	 mov	 ecx, DWORD PTR _i$[ebp]
+  000e5	8b 55 08	 mov	 edx, DWORD PTR _data$[ebp]
+  000e8	66 89 04 4a	 mov	 WORD PTR [edx+ecx*2], ax
 $LN11@matchfinde:
 
-; 102  : 	}
+; 109  : 	}
 
-  000fb	eb b4		 jmp	 SHORT $LN5@matchfinde
+  000ec	eb b4		 jmp	 SHORT $LN5@matchfinde
 $LN1@matchfinde:
 
-; 103  : }
+; 110  : }
 
-  000fd	5f		 pop	 edi
-  000fe	5e		 pop	 esi
-  000ff	5b		 pop	 ebx
-  00100	81 c4 e4 00 00
-	00		 add	 esp, 228		; 000000e4H
-  00106	3b ec		 cmp	 ebp, esp
-  00108	e8 00 00 00 00	 call	 __RTC_CheckEsp
-  0010d	8b e5		 mov	 esp, ebp
-  0010f	5d		 pop	 ebp
-  00110	c3		 ret	 0
+  000ee	5f		 pop	 edi
+  000ef	5e		 pop	 esi
+  000f0	5b		 pop	 ebx
+  000f1	81 c4 d0 00 00
+	00		 add	 esp, 208		; 000000d0H
+  000f7	3b ec		 cmp	 ebp, esp
+  000f9	e8 00 00 00 00	 call	 __RTC_CheckEsp
+  000fe	8b e5		 mov	 esp, ebp
+  00100	5d		 pop	 ebp
+  00101	c3		 ret	 0
 _matchfinder_rebase ENDP
 _TEXT	ENDS
 ; Function compile flags: /Odtp /RTCsu /ZI

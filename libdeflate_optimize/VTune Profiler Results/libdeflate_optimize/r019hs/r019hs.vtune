@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
  <rdmgr>
-  <timestamp type="u64_t">1587512775</timestamp>
+  <timestamp type="u64_t">1587811192</timestamp>
   <hostname>DESKTOP-UUPP9C7</hostname>
   <os>windows</os>
   <product>Intel® VTune™ Profiler 2020 Update 1</product>
@@ -15,8 +15,8 @@
   <CPUStepping type="s32_t">9</CPUStepping>
   <CPUBrandName>Intel(R) Core(TM) i5-7200U CPU @ 2.50GHz</CPUBrandName>
   <isa>avx2</isa>
-  <collectionTimeBegin type="u64_t">1587512775</collectionTimeBegin>
-  <collectionTimeEnd type="u64_t">1587512778</collectionTimeEnd>
+  <collectionTimeBegin type="u64_t">1587811192</collectionTimeBegin>
+  <collectionTimeEnd type="u64_t">1587811205</collectionTimeEnd>
   <variables>
    <at>hs</at>
   </variables>

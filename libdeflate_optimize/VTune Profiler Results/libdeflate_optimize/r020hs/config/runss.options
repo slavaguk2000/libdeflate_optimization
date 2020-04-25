@@ -12,4 +12,4 @@ C:\Users\user\source\repos\libdeflate_optimize\libdeflate_optimize\VTune Profile
 --type=cpu:stack
 --interval=10
 --
-C:\Users\user\source\repos\libdeflate_optimize\Release\libdeflate_optimize.exe
+C:\Users\user\source\repos\libdeflate_optimize\Debug\libdeflate_optimize.exe

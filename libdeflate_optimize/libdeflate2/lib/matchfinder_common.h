@@ -85,11 +85,18 @@ matchfinder_rebase(mf_pos_t *data, size_t num_entries)
 		 * changes the value to -32768.  Otherwise, set the sign bit;
 		 * this is equivalent to subtracting 32768.  */
 		for (i = 0; i < num_entries; i++) {
-			u16 v = data[i];
-			u16 sign_bit = v & 0x8000;
-			v &= sign_bit - ((sign_bit >> 15) ^ 1);
-			v |= 0x8000;
-			data[i] = v;
+			
+			///
+			//u16 v = data[i];
+			//u16 sign_bit = v & 0x8000;
+			//v &= sign_bit - ((sign_bit >> 15) ^ 1);
+			//v |= 0x8000;
+			//data[i] = v;
+			//////OPTIMIZE
+
+			data[i] = data[i] < 0 ? 0x8000 : data[i] | 0x8000;
+
+			///
 		}
 		return;
 	}

@@ -388,7 +388,7 @@ hc_matchfinder_skip_positions(struct hc_matchfinder * const restrict mf,
 {
 	u32 cur_pos;
 	u32 hash3, hash4;
-	u32 next_hashseq;
+	
 	u32 remaining = count;
 
 	if (unlikely(count + 5 > in_end - in_next))
@@ -407,9 +407,20 @@ hc_matchfinder_skip_positions(struct hc_matchfinder * const restrict mf,
 		mf->next_tab[cur_pos] = mf->hash4_tab[hash4];
 		mf->hash4_tab[hash4] = cur_pos;
 
+		//
+
+		/*u32 next_hashseq;
 		next_hashseq = get_unaligned_le32(++in_next);
 		hash3 = lz_hash(next_hashseq & 0xFFFFFF, HC_MATCHFINDER_HASH3_ORDER);
 		hash4 = lz_hash(next_hashseq, HC_MATCHFINDER_HASH4_ORDER);
+		*/
+		//OPTIMIZE
+		
+		hash3 = lz_hash(*((u32*)(++in_next)) & 0xFFFFFF, HC_MATCHFINDER_HASH3_ORDER);
+		hash4 = lz_hash(*((u32*)(in_next)), HC_MATCHFINDER_HASH4_ORDER);
+		
+		///
+		
 		cur_pos++;
 	} while (--remaining);
 

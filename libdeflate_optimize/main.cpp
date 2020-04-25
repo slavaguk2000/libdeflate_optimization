@@ -7,7 +7,7 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-const int SIZE_ARR = 100000000;//13953
+const int SIZE_ARR = 100000000;//13953//922
 //const int SIZE_ARR = 1000000;//172
 const int LEVEL = 1;
 
